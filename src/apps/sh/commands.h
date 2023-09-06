@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
+#include <math.h>
 #include <time.h> /* sleep */
 
 #include <kernel/framebuffer_console.h> /* fbc_setfore, fbc_clear */
@@ -41,9 +42,6 @@
             *(p + 2) = tmp;            \
         }                              \
     } while (0);
-
-/* Just used in cmd_test_libk */
-#define SIGMAROUND(n) (double)(int)(n + 0.5)
 
 #define LENGTH(arr) (sizeof(arr) / sizeof(arr[0]))
 
