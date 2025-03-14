@@ -93,8 +93,10 @@ $(KERNEL_BIN): cfg/linker.ld $(KERNEL_OBJS) $(LIBK_OBJS) $(APP_OBJS)
 
 # Bootloader uses `-f bin` instead of `-f elf32`
 $(BOOTLOADER_BIN): src/bootloader/entry.asm
-	$(ASM) -f bin -o $@ $<
+	$(ASM) -f bin -i$(dir $<) -o $@ $<
 
+# TODO: Remove '-i' flags from 'ASM_FLAGS', use the same method as the
+# bootloader.
 obj/%.asm.o: src/%.asm
 	@mkdir -p $(dir $@)
 	$(ASM) $(ASM_FLAGS) -o $@ $<
