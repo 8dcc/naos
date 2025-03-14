@@ -120,17 +120,30 @@ bios_puts:
 
 ; uint24_t lba_to_chs(uint16_t ax);
 ;
-; Converting Logical Block Address scheme (LBA) to Cylinder-Head-Sector
+; Convert Logical Block Address scheme (LBA) to Cylinder-Head-Sector
 ; scheme (CHS):
+;
 ;   Cylinder: (LBA / SectorsPerTrack) / heads
 ;   Head:     (LBA / SectorsPerTrack) % heads
 ;   Sector:   (LBA % SectorsPerTrack) + 1
 ;
 ; We will return:
-;   The Sector number in cx[0..5]
-;   The Cylinder number in cx[6..15]
-;   The Head number in dx[8..15] (dh)
-; Because it's the format that the BIOS interrupt 0x13,2 expects.
+;
+;   - The Sector number in cx[0..5]
+;   - The lower 8 bits of the Cylinder number in cx[8..15] and the upper two
+;     bits in cx[6..7].
+;   - The Head number in dx[8..15] (dh)
+;
+; Because it's the format that the BIOS interrupt 0x13,2 expects:
+;
+;     |          |    CH    |    CL    |    DH    |    DL    |
+;     |----------|----------|----------|----------|----------|
+;     | Cylinder | 76543210 | 98       |          |          |
+;     | Head     |          |          | 76543210 |   ????   |
+;     | Sector   |          |   543210 |          |          |
+;
+; Therefore, note that the 'cx' and 'dx' registers will be overwritten by this
+; call, even the unused lower part of 'dx'.
 lba_to_chs:
     push    ax
 
@@ -144,13 +157,15 @@ lba_to_chs:
     ; Now that `ax' contains (LBA / SpT), get Cylinder and Head.
     xor     dx, dx
     div     word [bpb + bpb_t.heads]        ; dx = ax % heads; ax /= heads;
-    mov     dh, dl                          ; Return Head in dx[8..15]
+    mov     dh, dl                          ; Return Head (dl) in dx[8..15]
 
-    ; Return bits [8..9] of Cylinder in cx[6..7] and bits [0..7] of Cylinder in
-    ; cx[8..15]
-    mov     ch, al                          ; cx[8..15] = cylinder[0..7];
-    shl     ah, 6                           ; ah >>= 6;
-    or      cl, ah                          ; cx[6..7] = cylinder[8..9];
+    ; Return bits [0..7] of Cylinder ('ax') in cx[8..15], and bits [8..9] of
+    ; Cylinder in cx[6..7]. For the first operation, we copy 'al' to 'ch'
+    ; directly; for the second operation, we move ah[0..1] (i.e. ax[8..9]) to
+    ; ah[6..7], and we then OR that with the sector we stored in cx[0..5].
+    mov     ch, al      ; cx[8..15] = cylinder[0..7];
+    shl     ah, 6       ; Shift lower 2 bits of 'ah' to its upper two bits
+    or      cl, ah      ; cx[6..7] = cylinder[8..9];
 
     pop ax
     ret
