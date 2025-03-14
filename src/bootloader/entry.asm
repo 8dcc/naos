@@ -3,6 +3,8 @@
 ; bytes 511-512, and loads us into 0x7C00.
 ;------------------------------------------------------------------------------
 
+%include "bios_structures.asm"
+
 bits 16
 
 ; Specify base address where the BIOS will load us. We need to use NASM's
@@ -21,28 +23,51 @@ _start:
 
 ;-------------------------------------------------------------------------------
 
-; Now the BIOS Parameter Block (BPB)
-bpb_oem:                    db "fsosboot"   ; 3 (Shouldn't matter, 8 bytes)
-bpb_bytes_per_sector:       dw 512          ; 11
-bpb_sectors_per_cluster:    db 1            ; 13
-bpb_reserved_sectors:       dw 1            ; 14 (Includes boot sector)
-bpb_fat_count:              db 2            ; 16
-bpb_dir_entries_count:      dw 0xE0         ; 17
-bpb_total_sectors:          dw 2880         ; 19 (1.44MiB / 512bps = 2880)
-bpb_media_descriptor_type:  db 0xF0         ; 21 (3.5" floppy disk)
-bpb_sectors_per_fat:        dw 9            ; 22
-bpb_sectors_per_track:      dw 18           ; 24
-bpb_heads:                  dw 2            ; 26
-bpb_hidden_sectors:         dd 0            ; 28
-bpb_large_sector_count:     dd 0            ; 32 (Set if entry 19 is zero)
+; At offset 3, we need to add 8 arbitrary bytes so the BIOS Parameter
+; Block (BPB) starts at offset 0xB.
+db "fsosboot"
 
-; Next, the Extended Boot Record (EBR)
-ebr_drive_number:           db 0            ; 36 (0 for floppy, 0x80 for HDDs)
-ebr_reserved:               db 0            ; 37
-ebr_signature:              db 0x28         ; 38 (0x28 or 0x29)
-ebr_volume_id:              db "FSOS"       ; 39 (Shouldn't matter, 4 bytes)
-ebr_volume_label:           db "Bootloader " ; 43 (Shouldn't matter, 11 bytes)
-ebr_system_id:              db "FAT12   "   ; 54 (8 bytes)
+%if ($-$$) != 0xB
+%error "Expected the BIOS Parameter Block at offset 0xB."
+%endif
+
+; Extended BIOS Parameter Block (EBPB) fields (section offset 0x0B..0x3D,
+; inclusive).
+bpb:
+istruc ebpb_t
+    at bpb_t.bytes_per_sector,       dw 512
+    at bpb_t.sectors_per_cluster,    db 1
+    at bpb_t.reserved_sectors,       dw 1     ; Includes boot sector
+    at bpb_t.fat_count,              db 2
+    at bpb_t.dir_entries_count,      dw 0xE0
+    at bpb_t.total_sectors,          dw 2880  ; 1.44MiB / 512bps = 2880
+    at bpb_t.media_descriptor_type,  db 0xF0  ; 3.5" floppy disk
+    at bpb_t.sectors_per_fat,        dw 9
+    at bpb_t.sectors_per_track,      dw 18
+    at bpb_t.heads,                  dw 2
+    at bpb_t.hidden_sectors,         dd 0
+
+    ; Should only be set if entry at BPB offset 0x13 (bpb_t.total_sectors) is
+    ; zero.
+    at bpb_t.large_sector_count,     dd 0
+
+    at ebpb_t.drive_number,          db 0            ; 0 for floppy, 0x80 for HDDs
+    at ebpb_t.reserved,              db 0
+
+    ; Should be 0x28 or 0x29 depending on the number of subsequent fields, see
+    ; structure definition.
+    at ebpb_t.signature,             db 0x29
+
+    ; The contents of the following two shouldn't matter, but they have to be 4
+    ; and 11 bytes respectively.
+    at ebpb_t.volume_id,             db "FSOS"
+    at ebpb_t.volume_label,          db "Bootloader "
+
+    ; 8-byte file system type, padded with blanks. For example "FAT12   ",
+    ; "FAT16   " or "FAT     ". In theory only used for display purposes, but
+    ; it's still used sometimes for identification purposes.
+    at ebpb_t.system_id,             db "FAT12   "
+iend
 
 ;-------------------------------------------------------------------------------
 
@@ -109,13 +134,13 @@ bios_puts:
 lba_to_chs:
     ; First, calculate Sector and store in `cx'.
     xor     dx, dx                          ; For div
-    div     word [bpb_sectors_per_track]    ; dx = ax % SpT; ax /= SpT;
+    div     word [bpb + bpb_t.sectors_per_track]  ; dx = ax % SpT; ax /= SpT;
     inc     dx                              ; dx++;
     mov     cx, dx                          ; Return Sector in cx[0..5]
 
     ; Now that `ax' contains (LBA / SpT), get Cylinder and Head.
     xor     dx, dx
-    div     word [bpb_heads]                ; dx = ax % heads; ax /= heads;
+    div     word [bpb + bpb_t.heads]        ; dx = ax % heads; ax /= heads;
     mov     dh, dl                          ; Return Head in dx[8..15]
 
     ; Return bits [8..9] of Cylinder in cx[6..7] and bits [0..7] of Cylinder in
