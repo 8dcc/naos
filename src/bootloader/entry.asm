@@ -1,6 +1,8 @@
 ;------------------------------------------------------------------------------
-; Entry point of our bootloader. The BIOS will look for the 0xAA55 signature in
-; bytes 511-512, and loads us into 0x7C00.
+; Entry point of our bootloader.
+;
+; The BIOS will look for the 0xAA55 signature in bytes 511..512, and loads us
+; into 0x7C00.
 ;------------------------------------------------------------------------------
 
 %include "bios_structures.asm"
@@ -9,7 +11,7 @@ bits 16
 
 ; Specify base address where the BIOS will load us. We need to use NASM's
 ; built-in "linker" because we are generating a raw binary, and we can't link
-; with `ld'.
+; with 'ld'.
 org 0x7C00
 
 section .text
@@ -129,10 +131,10 @@ bios_puts:
 ;
 ; We will return:
 ;
-;   - The Sector number in cx[0..5]
-;   - The lower 8 bits of the Cylinder number in cx[8..15] and the upper two
-;     bits in cx[6..7].
-;   - The Head number in dx[8..15] (dh)
+;   - The Sector number in CX[0..5]
+;   - The lower 8 bits of the Cylinder number in CX[8..15] and the upper two
+;     bits in CX[6..7]
+;   - The Head number in DX[8..15] (DH)
 ;
 ; Because it's the format that the BIOS interrupt 0x13,2 expects:
 ;
@@ -142,30 +144,30 @@ bios_puts:
 ;     | Head     |          |          | 76543210 |   ????   |
 ;     | Sector   |          |   543210 |          |          |
 ;
-; Therefore, note that the 'cx' and 'dx' registers will be overwritten by this
-; call, even the unused lower part of 'dx'.
+; Therefore, note that the CX and DX registers will be overwritten by this
+; call, even the unused lower part of DX.
 lba_to_chs:
     push    ax
 
-    ; First, calculate Sector and store in `cx'.
-    xor     dx, dx                          ; For div
-    div     word [bpb + bpb_t.sectors_per_track]  ; dx = ax % SpT; ax /= SpT;
-    inc     dx                              ; dx++;
+    ; First, calculate Sector and store in CX.
+    xor     dx, dx                          ; For DIV
+    div     word [bpb + bpb_t.sectors_per_track]  ; DX = AX % SpT; AX /= SpT;
+    inc     dx                              ; DX++;
     and     dx, 0b00111111                  ; Only keep lower 6 bits
-    mov     cx, dx                          ; Return Sector in cx[0..5]
+    mov     cx, dx                          ; Return Sector in CX[0..5]
 
-    ; Now that `ax' contains (LBA / SpT), get Cylinder and Head.
+    ; Now that AX contains (LBA / SpT), get Cylinder and Head.
     xor     dx, dx
-    div     word [bpb + bpb_t.heads]        ; dx = ax % heads; ax /= heads;
-    mov     dh, dl                          ; Return Head (dl) in dx[8..15]
+    div     word [bpb + bpb_t.heads]        ; DX = AX % heads; AX /= heads;
+    mov     dh, dl                          ; Return Head (DL) in DX[8..15]
 
-    ; Return bits [0..7] of Cylinder ('ax') in cx[8..15], and bits [8..9] of
-    ; Cylinder in cx[6..7]. For the first operation, we copy 'al' to 'ch'
-    ; directly; for the second operation, we move ah[0..1] (i.e. ax[8..9]) to
-    ; ah[6..7], and we then OR that with the sector we stored in cx[0..5].
-    mov     ch, al      ; cx[8..15] = cylinder[0..7];
-    shl     ah, 6       ; Shift lower 2 bits of 'ah' to its upper two bits
-    or      cl, ah      ; cx[6..7] = cylinder[8..9];
+    ; Return bits [0..7] of Cylinder (AX) in CX[8..15], and bits [8..9] of
+    ; Cylinder in CX[6..7]. For the first operation, we copy 'AL' to 'CH'
+    ; directly; for the second operation, we move AH[0..1] (i.e. AX[8..9]) to
+    ; AH[6..7], and we then OR that with the sector we stored in CX[0..5].
+    mov     ch, al      ; CX[8..15] = cylinder[0..7];
+    shl     ah, 6       ; Shift lower 2 bits of AH to its upper two bits
+    or      cl, ah      ; CX[6..7] = cylinder[8..9];
 
     pop ax
     ret
@@ -173,7 +175,7 @@ lba_to_chs:
 
 ;-------------------------------------------------------------------------------
 
-; No `.data' section because the string also needs to be inside the first 512
+; No '.data' section because the string also needs to be inside the first 512
 ; bytes, and we need to add the padding. Also note the position of the string
 ; inside the file. After the file is placed into 0x7C00, the BIOS will jump to
 ; the first instruction, so the entry point needs to be first.
@@ -192,6 +194,6 @@ msg_boot: db "Hello, world.", 13, 10, 0 ; "\r\n\0"
 ; the first section will be the current one (.text).
 times 510 - ($ - $$) db 0x00
 
-; The BIOS will look for the 0xAA55 signature in bytes 511-512. Note the
+; The BIOS will look for the 0xAA55 signature in bytes 511..512. Note the
 ; endianness.
 db 0x55, 0xAA
