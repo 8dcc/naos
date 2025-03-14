@@ -132,10 +132,13 @@ bios_puts:
 ;   The Head number in dx[8..15] (dh)
 ; Because it's the format that the BIOS interrupt 0x13,2 expects.
 lba_to_chs:
+    push    ax
+
     ; First, calculate Sector and store in `cx'.
     xor     dx, dx                          ; For div
     div     word [bpb + bpb_t.sectors_per_track]  ; dx = ax % SpT; ax /= SpT;
     inc     dx                              ; dx++;
+    and     dx, 0b00111111                  ; Only keep lower 6 bits
     mov     cx, dx                          ; Return Sector in cx[0..5]
 
     ; Now that `ax' contains (LBA / SpT), get Cylinder and Head.
@@ -149,6 +152,7 @@ lba_to_chs:
     shl     ah, 6                           ; ah >>= 6;
     or      cl, ah                          ; cx[6..7] = cylinder[8..9];
 
+    pop ax
     ret
 
 
