@@ -1,6 +1,6 @@
 
-%ifndef BIOS_STRUCTURES_ASM
-%define BIOS_STRUCTURES_ASM
+%ifndef BIOS_STRUCTURES_ASM_
+%define BIOS_STRUCTURES_ASM_
 
 ; BIOS Parameter Block (BPB) for DOS 3.31. It which describes the physical
 ; layout of a data storage volume.
@@ -43,4 +43,4 @@ endstruc
 %error "Expected the size of an Extended BIOS Parameter Block to be 51 bytes."
 %endif
 
-%endif ; BIOS_STRUCTURES_ASM
+%endif ; BIOS_STRUCTURES_ASM_
