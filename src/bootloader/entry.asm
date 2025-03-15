@@ -184,7 +184,7 @@ lba_to_chs:
 ; bytes, and we need to add the padding. Also note the position of the string
 ; inside the file. After the file is placed into 0x7C00, the BIOS will jump to
 ; the first instruction, so the entry point needs to be first.
-msg_boot: db "Hello, world.", 13, 10, 0 ; "\r\n\0"
+msg_boot: db `Hello, world.\r\n\0`
 
 ;-------------------------------------------------------------------------------
 
