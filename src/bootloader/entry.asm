@@ -126,9 +126,9 @@ bios_puts:
 ; Convert Logical Block Address scheme (LBA) to Cylinder-Head-Sector
 ; scheme (CHS):
 ;
-;   Cylinder: (LBA / SectorsPerTrack) / heads
-;   Head:     (LBA / SectorsPerTrack) % heads
-;   Sector:   (LBA % SectorsPerTrack) + 1
+;   Cylinder/Track: (LBA / SectorsPerTrack) / heads
+;   Head:           (LBA / SectorsPerTrack) % heads
+;   Sector:         (LBA % SectorsPerTrack) + 1
 ;
 ; We will return:
 ;
@@ -154,11 +154,11 @@ lba_to_chs:
     push    dx
 
     ; First, calculate Sector and store in CX.
-    xor     dx, dx                          ; For DIV
+    xor     dx, dx                                ; For DIV
     div     word [bpb + bpb_t.sectors_per_track]  ; DX = AX % SpT; AX /= SpT;
-    inc     dx                              ; DX++;
-    and     dx, 0b00111111                  ; Only keep lower 6 bits
-    mov     cx, dx                          ; Return Sector in CX[0..5]
+    inc     dx                                    ; DX++;
+    and     dx, 0b00111111                        ; Only keep lower 6 bits
+    mov     cx, dx                                ; Return Sector in CX[0..5]
 
     ; Now that AX contains (LBA / SpT), get Cylinder and Head.
     xor     dx, dx
@@ -169,13 +169,13 @@ lba_to_chs:
     ; Cylinder in CX[6..7]. For the first operation, we copy 'AL' to 'CH'
     ; directly; for the second operation, we move AH[0..1] (i.e. AX[8..9]) to
     ; AH[6..7], and we then OR that with the sector we stored in CX[0..5].
-    mov     ch, al      ; CX[8..15] = cylinder[0..7];
-    shl     ah, 6       ; Shift lower 2 bits of AH to its upper two bits
-    or      cl, ah      ; CX[6..7] = cylinder[8..9];
+    mov     ch, al          ; CX[8..15] = cylinder[0..7];
+    shl     ah, 6           ; Shift lower 2 bits of AH to its upper two bits
+    or      cl, ah          ; CX[6..7] = cylinder[8..9];
 
-    pop     ax          ; Restore old DX into AX
-    mov     dl, al      ; Only restore the original DL, keeping our DH
-    pop     ax          ; Restore old AX into AX
+    pop     ax              ; Restore old DX into AX
+    mov     dl, al          ; Only restore the original DL, keeping our DH
+    pop     ax              ; Restore old AX into AX
     ret
 
 ;-------------------------------------------------------------------------------
