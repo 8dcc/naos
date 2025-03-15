@@ -46,11 +46,11 @@ bpb:
 istruc ebpb_t
     at bpb_t.bytes_per_sector,       dw 512
     at bpb_t.sectors_per_cluster,    db 1
-    at bpb_t.reserved_sectors,       dw 1     ; Includes boot sector
+    at bpb_t.reserved_sectors,       dw 1       ; Includes boot sector
     at bpb_t.fat_count,              db 2
     at bpb_t.dir_entries_count,      dw 0xE0
-    at bpb_t.total_sectors,          dw 2880  ; 1.44MiB / 512bps = 2880
-    at bpb_t.media_descriptor_type,  db 0xF0  ; 3.5" floppy disk
+    at bpb_t.total_sectors,          dw 2880    ; 1.44MiB / 512bps = 2880
+    at bpb_t.media_descriptor_type,  db 0xF0    ; 3.5" floppy disk
     at bpb_t.sectors_per_fat,        dw 9
     at bpb_t.sectors_per_track,      dw 18
     at bpb_t.heads,                  dw 2
@@ -60,7 +60,7 @@ istruc ebpb_t
     ; zero.
     at bpb_t.large_sector_count,     dd 0
 
-    at ebpb_t.drive_number,          db 0            ; 0 for floppy, 0x80 for HDDs
+    at ebpb_t.drive_number,          db 0       ; 0 for floppy, 0x80 for HDDs
     at ebpb_t.reserved,              db 0
 
     ; Should be 0x28 or 0x29 depending on the number of subsequent fields, see
@@ -90,10 +90,26 @@ bootloader_entry:
     ; We will also set up the Stack segment. Since the BIOS loaded us at address
     ; 0x7C00, and the stack grows downwards, we can use the current address as
     ; the bottom of the stack (the highest address).
+    ;
+    ; FIXME: Wouldn't this overwrite our first 16 bytes on the first push?
     mov     ss, ax
     mov     sp, 0x7C00
 
     mov     si, msg_boot
+    call    bios_puts
+
+    ; Read one sector (CL) from the first LBA block (AX) of the current floppy
+    ; disk (DL), and save it in memory address 0x8000.
+    ;
+    ; Note that the 'bios_disk_read' function will write to ES:BX, not just BX,
+    ; but since we initialized the "extra" segment (ES) to zero, it translates
+    ; to just BX.
+    mov     ax, 1               ; LBA block number
+    mov     cl, 1               ; Number of sectors to read
+    mov     bx, 0x8000
+    call    bios_disk_read
+
+    mov     si, msg_read_success
     call    bios_puts
 
     ; For now, halt the system
@@ -122,7 +138,7 @@ bios_puts:
 
     mov     ah, BIOS_TTY_WRITE_CHAR
     mov     bh, 0x0                 ; Page number: 0
-    int     BIOS_INT_VIDEO          ; BIOS video interrupt
+    int     BIOS_INT_VIDEO
 
     jmp     .loop
 
@@ -286,6 +302,7 @@ bios_disk_reset:
 ; inside the file. After the file is placed into 0x7C00, the BIOS will jump to
 ; the first instruction, so the entry point needs to be first.
 msg_boot: db `Hello, world.\r\n\0`
+msg_read_success: db `Successfully read second sector.\r\n\0`
 msg_read_failed: db `The BIOS failed to read sectors from drive.\r\n\0`
 msg_reset_failed: db `The BIOS failed to reset disk system.\r\n\0`
 
