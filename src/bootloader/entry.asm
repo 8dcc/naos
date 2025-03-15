@@ -5,8 +5,8 @@
 ; into 0x7C00.
 ;------------------------------------------------------------------------------
 
-%include "bios_codes.asm"
-%include "bios_structures.asm"
+%include "include/bios_codes.asm"
+%include "include/bios_structures.asm"
 
 bits 16
 
