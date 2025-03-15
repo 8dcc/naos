@@ -5,6 +5,7 @@
 ; into 0x7C00.
 ;------------------------------------------------------------------------------
 
+%include "bios_codes.asm"
 %include "bios_structures.asm"
 
 bits 16
@@ -108,9 +109,9 @@ bios_puts:
     test    al, al          ; Did we reach the end of the string?
     jz      .done
 
-    mov     ah, 0xE         ; BIOS code for writing char
-    mov     bh, 0x0         ; Page number: 0
-    int     0x10            ; BIOS video interrupt
+    mov     ah, BIOS_TTY_WRITE_CHAR
+    mov     bh, 0x0                 ; Page number: 0
+    int     BIOS_INT_VIDEO          ; BIOS video interrupt
 
     jmp     .loop
 
