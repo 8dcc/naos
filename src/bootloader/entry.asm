@@ -189,10 +189,10 @@ lba_to_chs:
     pop     ax              ; Restore old AX into AX
     ret
 
-; void bios_read_disk(uint16_t src,         /* AX */
-;                     uint8_t* dst,         /* ES:BX */
-;                     uint8_t nSectors,     /* CL */
-;                     uint8_t nDrive);      /* DL */
+; void bios_disk_read(uint16_t src,         /* AX */
+;                     uint8_t  nSectors,    /* CL */
+;                     uint8_t  nDrive,      /* DL */
+;                     uint8_t* dst);        /* ES:BX */
 ;
 ; Read the specified number of sectors (CL) from the specified drive (DL) at the
 ; specified LBA address (AX) into the specified address in the "Extra"
@@ -235,6 +235,7 @@ bios_disk_read:
 
     ; If the carry flag is still set, the read operation failed. Check if we are
     ; supposed to keep trying according to our counter in DI.
+    dec     di
     test    di, di
     jz      .read_error
 
@@ -242,7 +243,6 @@ bios_disk_read:
     ; loop. We can directly call 'bios_disk_reset' since the drive number is
     ; already in DL.
     call    bios_disk_reset
-    dec     di
     jmp     .loop
 
 .read_error:
