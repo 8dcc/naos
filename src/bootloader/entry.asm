@@ -141,13 +141,16 @@ bios_puts:
 ;     |          |    CH    |    CL    |    DH    |    DL    |
 ;     |----------|----------|----------|----------|----------|
 ;     | Cylinder | 76543210 | 98       |          |          |
-;     | Head     |          |          | 76543210 |   ????   |
+;     | Head     |          |          | 76543210 |          |
 ;     | Sector   |          |   543210 |          |          |
+;     | Drive    |          |          |          |   ????   |
 ;
-; Therefore, note that the CX and DX registers will be overwritten by this
-; call, even the unused lower part of DX.
+; Therefore, note that CX and the high part of the DX register (DH) will be
+; overwritten by this call. The lower part of the DX register (DL) will be
+; preserved.
 lba_to_chs:
     push    ax
+    push    dx
 
     ; First, calculate Sector and store in CX.
     xor     dx, dx                          ; For DIV
@@ -169,9 +172,10 @@ lba_to_chs:
     shl     ah, 6       ; Shift lower 2 bits of AH to its upper two bits
     or      cl, ah      ; CX[6..7] = cylinder[8..9];
 
-    pop ax
+    pop     ax          ; Restore old DX into AX
+    mov     dl, al      ; Only restore the original DL, keeping our DH
+    pop     ax          ; Restore old AX into AX
     ret
-
 
 ;-------------------------------------------------------------------------------
 
