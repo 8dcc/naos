@@ -83,22 +83,27 @@ bootloader_entry:
 
     ; We will also set up the Stack segment. Since the BIOS loaded us at address
     ; 0x7C00, and the stack grows downwards, we can use the current address as
-    ; the bottom of the stack (The highest address).
+    ; the bottom of the stack (the highest address).
     mov     ss, ax
     mov     sp, 0x7C00
 
     mov     si, msg_boot
     call    bios_puts
 
-.halt:
     ; For now, halt the system
     ; TODO: Jump to kernel
+    jmp     halt
+
+halt:
+    cli
     hlt
-    jmp     .halt
+    jmp     halt
 
 ;-------------------------------------------------------------------------------
 
-; void bios_puts(const char* si);
+; void bios_puts(const char* str /* SI */);
+;
+; Print the specified null-terminated string to the BIOS console.
 bios_puts:
     push    ax
     push    bx
@@ -121,7 +126,7 @@ bios_puts:
     pop     ax
     ret
 
-; uint24_t lba_to_chs(uint16_t ax);
+; uint24_t lba_to_chs(uint16_t lba_addr /* AX */);
 ;
 ; Convert Logical Block Address scheme (LBA) to Cylinder-Head-Sector
 ; scheme (CHS):
