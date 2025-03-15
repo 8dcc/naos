@@ -8,6 +8,12 @@
 %include "include/bios_codes.asm"
 %include "include/bios_structures.asm"
 
+; Number of retries for the BIOS disk operations, since floppy disks can be
+; unreliable.
+%define DISK_RETRY_NUM 3
+
+;-------------------------------------------------------------------------------
+
 bits 16
 
 ; Specify base address where the BIOS will load us. We need to use NASM's
@@ -183,6 +189,96 @@ lba_to_chs:
     pop     ax              ; Restore old AX into AX
     ret
 
+; void bios_read_disk(uint16_t src,         /* AX */
+;                     uint8_t* dst,         /* ES:BX */
+;                     uint8_t nSectors,     /* CL */
+;                     uint8_t nDrive);      /* DL */
+;
+; Read the specified number of sectors (CL) from the specified drive (DL) at the
+; specified LBA address (AX) into the specified address in the "Extra"
+; segment (ES:BX).
+bios_disk_read:
+    push    ax
+    push    bx
+    push    cx
+    push    dx
+    push    di
+
+    ; TODO: Assert that the "sector number" argument (CL) is [1..128]
+    push    cx          ; Preserve nSectors (CL) from call to 'lba_to_chs'
+
+    ; Convert our first argument AX, in Logical Block Address scheme, to
+    ; Cylinder-Head-Sector, storing the results in CH, CL and DH.
+    call    lba_to_chs
+
+    ; Load the number of sectors (which used to be in CL, now in the top of the
+    ; stack) into the lower part of AX, and the BIOS disk function code into the
+    ; high part of AX.
+    pop     ax
+    mov     ah, BIOS_DRIVE_READ
+
+    ; If a read operation fails, we will retry it an arbitrary number of
+    ; times. The DI register will be used to keep track of this counter.
+    mov     di, DISK_RETRY_NUM
+
+.loop:
+    ; Preserve all registers in case the BIOS call modifies them, set the carry
+    ; flag in case the BIOS doesn't automatically set it, perform the actual
+    ; disk interrupt, and restore the old registers.
+    pusha
+    stc
+    int     BIOS_INT_DISK
+    popa
+
+    ; If the carry flag became unset after the BIOS call, the read succeded.
+    jnc     .done
+
+    ; If the carry flag is still set, the read operation failed. Check if we are
+    ; supposed to keep trying according to our counter in DI.
+    test    di, di
+    jz      .read_error
+
+    ; If we still have retries left, reset the disk, decrease the counter and
+    ; loop. We can directly call 'bios_disk_reset' since the drive number is
+    ; already in DL.
+    call    bios_disk_reset
+    dec     di
+    jmp     .loop
+
+.read_error:
+    mov     si, msg_read_failed
+    call    bios_puts
+    jmp     halt
+
+.done:
+    pop     di
+    pop     dx
+    pop     cx
+    pop     bx
+    pop     ax
+    ret
+
+; void bios_disk_reset(uint8_t nDrive /* DL */);
+;
+; Reset the disk controller for the specified drive number (DL).
+bios_disk_reset:
+    pusha
+    mov     ah, BIOS_RESET_DISK_SYSTEM
+    stc
+    int     BIOS_INT_DISK
+    popa
+
+    ; If the carry flag became unset after the BIOS call, it succeded.
+    jnc     .done
+
+    ; If the carry flag is still set after the BIOS call, it failed. Abort.
+    mov     si, msg_reset_failed
+    call    bios_puts
+    jmp     halt
+
+.done:
+    ret
+
 ;-------------------------------------------------------------------------------
 
 ; No '.data' section because the string also needs to be inside the first 512
@@ -190,6 +286,8 @@ lba_to_chs:
 ; inside the file. After the file is placed into 0x7C00, the BIOS will jump to
 ; the first instruction, so the entry point needs to be first.
 msg_boot: db `Hello, world.\r\n\0`
+msg_read_failed: db `The BIOS failed to read sectors from drive.\r\n\0`
+msg_reset_failed: db `The BIOS failed to reset disk system.\r\n\0`
 
 ;-------------------------------------------------------------------------------
 
