@@ -1,7 +1,7 @@
 ;------------------------------------------------------------------------------
 ; Entry point of our bootloader.
 ;
-; The BIOS will look for the 0xAA55 signature in bytes 511..512, and loads us
+; The BIOS will look for the 0xAA55 signature in bytes 510..511, and loads us
 ; into 0x7C00.
 ;------------------------------------------------------------------------------
 
@@ -319,6 +319,6 @@ msg_reset_failed: db `The BIOS failed to reset disk system.\r\n\0`
 ; the first section will be the current one (.text).
 times 510 - ($ - $$) db 0x00
 
-; The BIOS will look for the 0xAA55 signature in bytes 511..512. Note the
+; The BIOS will look for the 0xAA55 signature in bytes 510..511. Note the
 ; endianness.
 db 0x55, 0xAA
