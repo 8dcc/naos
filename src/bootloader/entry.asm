@@ -1,18 +1,45 @@
-;------------------------------------------------------------------------------
-; Entry point of our bootloader.
+; Copyright 2025 8dcc. All Rights Reserved.
 ;
-; The BIOS will look for the 0xAA55 signature in bytes 510..511, and loads us
-; into 0x7C00.
+; This program is part of naos.
+;
+; This program is free software: you can redistribute it and/or modify it under
+; the terms of the GNU General Public License as published by the Free Software
+; Foundation, either version 3 of the License, or (at your option) any later
+; version.
+;
+; This program is distributed in the hope that it will be useful, but WITHOUT
+; ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+; FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+; details.
+;
+; You should have received a copy of the GNU General Public License along with
+; this program.  If not, see <https://www.gnu.org/licenses/>.
+;
 ;------------------------------------------------------------------------------
+;
+; This file describes the entry point of the bootloader.
+;
+; The BIOS will look for the '55 AA' signature in bytes 510..511, and loads us
+; into 0x7C00.
+;
+; For more information on how the FAT12 file system works, see my blog article:
+; https://8dcc.github.io/programming/understanding-fat.html
+
+;------------------------------------------------------------------------------
+; Includes
 
 %include "include/bios_codes.asm"
 %include "include/bios_structures.asm"
+
+;------------------------------------------------------------------------------
+; Macros
 
 ; Number of retries for the BIOS disk operations, since floppy disks can be
 ; unreliable.
 %define DISK_RETRY_NUM 3
 
 ;-------------------------------------------------------------------------------
+; Start of boot sector
 
 bits 16
 
@@ -29,8 +56,6 @@ global _start
 _start:
     jmp     short bootloader_entry
     nop
-
-;-------------------------------------------------------------------------------
 
 ; At offset 3, we need to add 8 arbitrary bytes so the BIOS Parameter
 ; Block (BPB) starts at offset 0xB.
@@ -79,6 +104,7 @@ istruc ebpb_t
 iend
 
 ;-------------------------------------------------------------------------------
+; Entry point
 
 bootloader_entry:
     ; Start by setting up the Data Segment (DS) and Extra Segment (ES). We need
@@ -128,6 +154,7 @@ halt:
     jmp     halt
 
 ;-------------------------------------------------------------------------------
+; BIOS functions
 
 ; void bios_puts(const char* str /* SI */);
 ;
@@ -317,6 +344,7 @@ bios_disk_reset:
     ret
 
 ;-------------------------------------------------------------------------------
+; Data
 
 ; No '.data' section because the string also needs to be inside the first 512
 ; bytes, and we need to add the padding. Also note the position of the string
@@ -328,6 +356,7 @@ msg_read_failed: db `The BIOS failed to read sectors from drive.\0`
 msg_reset_failed: db `The BIOS failed to reset disk system.\0`
 
 ;-------------------------------------------------------------------------------
+; Bootable signature
 
 ; Make sure we have enough space for the BIOS signature. See comment bellow.
 %if ($-$$) > 510
@@ -340,6 +369,6 @@ msg_reset_failed: db `The BIOS failed to reset disk system.\0`
 ; the first section will be the current one (.text).
 times 510 - ($ - $$) db 0x00
 
-; The BIOS will look for the 0xAA55 signature in bytes 510..511. Note the
+; The BIOS will look for the '55 AA' signature in bytes 510..511. Note the
 ; endianness.
 db 0x55, 0xAA
