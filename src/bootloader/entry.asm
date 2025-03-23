@@ -29,7 +29,7 @@
 ; Includes
 
 %include "include/bios_codes.asm"
-%include "include/bios_structures.asm"
+%include "include/fat12_structures.asm"
 
 ;------------------------------------------------------------------------------
 ; Macros
