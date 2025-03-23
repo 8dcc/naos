@@ -125,7 +125,10 @@ halt:
 
 ; void bios_puts(const char* str /* SI */);
 ;
-; Print the specified null-terminated string to the BIOS console.
+; Print the specified null-terminated string, along with a newline, to the BIOS
+; console.
+;
+; TODO: The BIOS might overwrite more registers inside the interrupt.
 bios_puts:
     push    ax
     push    bx
@@ -143,6 +146,18 @@ bios_puts:
     jmp     .loop
 
 .done:
+    ; Always print carriage return and newline, instead of storing them in every
+    ; string.
+    mov     al, `\r`
+    mov     ah, BIOS_TTY_WRITE_CHAR
+    mov     bh, 0x0
+    int     BIOS_INT_VIDEO
+
+    mov     al, `\n`
+    mov     ah, BIOS_TTY_WRITE_CHAR
+    mov     bh, 0x0
+    int     BIOS_INT_VIDEO
+
     pop     si
     pop     bx
     pop     ax
@@ -301,10 +316,10 @@ bios_disk_reset:
 ; bytes, and we need to add the padding. Also note the position of the string
 ; inside the file. After the file is placed into 0x7C00, the BIOS will jump to
 ; the first instruction, so the entry point needs to be first.
-msg_boot: db `Hello, world.\r\n\0`
-msg_read_success: db `Successfully read second sector.\r\n\0`
-msg_read_failed: db `The BIOS failed to read sectors from drive.\r\n\0`
-msg_reset_failed: db `The BIOS failed to reset disk system.\r\n\0`
+msg_boot: db `Hello, world.\0`
+msg_read_success: db `Successfully read second sector.\0`
+msg_read_failed: db `The BIOS failed to read sectors from drive.\0`
+msg_reset_failed: db `The BIOS failed to reset disk system.\0`
 
 ;-------------------------------------------------------------------------------
 
