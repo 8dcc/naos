@@ -78,7 +78,7 @@ istruc ebpb_t
     at bpb_t.media_descriptor_type,  db 0xF0    ; 3.5" floppy disk
     at bpb_t.sectors_per_fat,        dw 9
     at bpb_t.sectors_per_track,      dw 18
-    at bpb_t.heads,                  dw 2
+    at bpb_t.head_count,             dw 2
     at bpb_t.hidden_sectors,         dd 0
 
     ; Should only be set if entry at BPB offset 0x13 (bpb_t.total_sectors) is
@@ -201,8 +201,8 @@ bios_puts:
 ; Convert Logical Block Address scheme (LBA) to Cylinder-Head-Sector
 ; scheme (CHS):
 ;
-;   Cylinder/Track: (LBA / SectorsPerTrack) / heads
-;   Head:           (LBA / SectorsPerTrack) % heads
+;   Cylinder/Track: (LBA / SectorsPerTrack) / head_count
+;   Head:           (LBA / SectorsPerTrack) % head_count
 ;   Sector:         (LBA % SectorsPerTrack) + 1
 ;
 ; We will return:
@@ -237,7 +237,7 @@ lba_to_chs:
 
     ; Now that AX contains (LBA / SpT), get Cylinder and Head.
     xor     dx, dx
-    div     word [bpb + bpb_t.heads]        ; DX = AX % heads; AX /= heads;
+    div     word [bpb + bpb_t.head_count]   ; DX = AX % heads; AX /= heads;
     mov     dh, dl                          ; Return Head (DL) in DX[8..15]
 
     ; Return bits [0..7] of Cylinder (AX) in CX[8..15], and bits [8..9] of

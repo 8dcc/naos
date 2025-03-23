@@ -34,7 +34,7 @@ struc bpb_t
     .media_descriptor_type: resb 1
     .sectors_per_fat:       resw 1
     .sectors_per_track:     resw 1
-    .heads:                 resw 1
+    .head_count:            resw 1
     .hidden_sectors:        resd 1
     .large_sector_count:    resd 1
 endstruc
