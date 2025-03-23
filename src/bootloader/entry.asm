@@ -148,6 +148,16 @@ bootloader_entry:
     ; TODO: Jump to kernel
     jmp     halt
 
+; void die(const char* str /* SI */);
+;
+; Print the specified error message and halt.
+die:
+    call    bios_puts
+    jmp     halt
+
+; void halt(void);
+;
+; Disable interrupts and stop execution.
 halt:
     cli
     hlt
@@ -311,8 +321,7 @@ bios_disk_read:
 
 .read_error:
     mov     si, msg_read_failed
-    call    bios_puts
-    jmp     halt
+    jmp     die
 
 .done:
     pop     di
@@ -337,8 +346,7 @@ bios_disk_reset:
 
     ; If the carry flag is still set after the BIOS call, it failed. Abort.
     mov     si, msg_reset_failed
-    call    bios_puts
-    jmp     halt
+    jmp     die
 
 .done:
     ret
