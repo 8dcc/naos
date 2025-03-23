@@ -89,9 +89,9 @@ bootloader_entry:
 
     ; We will also set up the Stack segment. Since the BIOS loaded us at address
     ; 0x7C00, and the stack grows downwards, we can use the current address as
-    ; the bottom of the stack (the highest address).
-    ;
-    ; FIXME: Wouldn't this overwrite our first 16 bytes on the first push?
+    ; the bottom of the stack (the highest address). Also note that, when a
+    ; value is pushed, the stack pointer is decreased before the value is
+    ; written, so our first 16 bytes won't be overwritten.
     mov     ss, ax
     mov     sp, 0x7C00
 
