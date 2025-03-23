@@ -84,11 +84,11 @@
 %define BIOS_TEST_EXTENSIONS            0x41 ; Test Whether Extensions Are Available
 %define BIOS_DRIVE_READ_SECTORS         0x42 ; Read Sectors From Drive
 %define BIOS_DRIVE_WRITE_SECTORS        0x43 ; Write Sectors To Drive
-%define BIOS_VERIFY_SECTORS             0x44 ; Verify Sectors
+%define BIOS_VERIFY_SECTORS1            0x44 ; Verify Sectors
 %define BIOS_DRIVE_TOGGLE_LOCK          0x45 ; Lock/Unlock Drive
 %define BIOS_DRIVE_EJECT                0x46 ; Eject Drive
 %define BIOS_DRIVE_HEAD_TO_SECTOR       0x47 ; Move Drive Head To Sector
-%define BIOS_DRIVE_READ_PARAMS          0x48 ; Read Drive Parameters
+%define BIOS_DRIVE_READ_PARAMS1         0x48 ; Read Extended Drive Parameters
 %define BIOS_DETECT_MEDIA_CHANGE1       0x49 ; Detect Media Change
 %define BIOS_DRIVE_GET_EMULATION_TYPE   0x4B ; Get Drive Emulation Type
 

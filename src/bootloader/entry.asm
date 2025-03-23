@@ -263,10 +263,10 @@ lba_to_chs:
     pop     ax              ; Restore old AX into AX
     ret
 
-; void bios_disk_read(uint16_t src,         /* AX */
-;                     uint8_t  nSectors,    /* CL */
-;                     uint8_t  nDrive,      /* DL */
-;                     uint8_t* dst);        /* ES:BX */
+; void bios_disk_read(uint16_t src,          /* AX */
+;                     uint8_t  num_sectors,  /* CL */
+;                     uint8_t  drive_index,  /* DL */
+;                     uint8_t* dst);         /* ES:BX */
 ;
 ; Read the specified number of sectors (CL) from the specified drive (DL) at the
 ; specified LBA address (AX) into the specified address in the "Extra"
@@ -331,7 +331,7 @@ bios_disk_read:
     pop     ax
     ret
 
-; void bios_disk_reset(uint8_t nDrive /* DL */);
+; void bios_disk_reset(uint8_t drive_index /* DL */);
 ;
 ; Reset the disk controller for the specified drive number (DL).
 bios_disk_reset:
