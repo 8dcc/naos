@@ -81,19 +81,25 @@ iend
 ;-------------------------------------------------------------------------------
 
 bootloader_entry:
-    ; Start by setting up the Data and Extra segments. We need to use an
-    ; intermediate register to write to them.
+    ; Start by setting up the Data Segment (DS) and Extra Segment (ES). We need
+    ; to use an intermediate register to write to them.
     xor     ax, ax
     mov     ds, ax
     mov     es, ax
 
-    ; We will also set up the Stack segment. Since the BIOS loaded us at address
-    ; 0x7C00, and the stack grows downwards, we can use the current address as
-    ; the bottom of the stack (the highest address). Also note that, when a
-    ; value is pushed, the stack pointer is decreased before the value is
+    ; We will also set up the Stack Segment (SS). Since the BIOS loaded us at
+    ; address 0x7C00, and the stack grows downwards, we can use the current
+    ; address as the bottom of the stack (the highest address). Also note that,
+    ; when a value is pushed, the stack pointer is decreased before the value is
     ; written, so our first 16 bytes won't be overwritten.
     mov     ss, ax
     mov     sp, 0x7C00
+
+    ; Clear the Code segment (CS) by performing a far jump, ensuring that we are
+    ; in '0000:7c00' and not '07c0:0000'. The JMP is necessary because we can't
+    ; write to CS directly (we could also use two PUSHes and a RETF).
+    jmp     0000:.cleared_cs
+.cleared_cs:
 
     mov     si, msg_boot
     call    bios_puts
