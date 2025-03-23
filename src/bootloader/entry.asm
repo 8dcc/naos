@@ -127,6 +127,10 @@ bootloader_entry:
     jmp     0000:.cleared_cs
 .cleared_cs:
 
+    ; Get the drive number, sectors per track and head count from the BIOS, and
+    ; store it in the BPB.
+    call    bios_read_disk_info
+
     mov     si, msg_boot
     call    bios_puts
 
@@ -165,6 +169,44 @@ halt:
 
 ;-------------------------------------------------------------------------------
 ; BIOS functions
+
+; void bios_read_disk_info(uint16_t drive_index /* DL */);
+;
+; Read the relevant disk information into the BPB, such as the sectors per track
+; or head count. This procedure doesn't preserve any caller registers.
+bios_read_disk_info:
+    ; First, write the drive number to the Extended BPB. We expect the drive
+    ; number in DL because it's the register where the BIOS supposedly stored
+    ; our drive number.
+    mov     [bpb + ebpb_t.drive_number], dl
+
+    ; Read the drive information with a BIOS interrupt.
+    push    es
+    mov     ah, BIOS_DRIVE_READ_PARAMS
+    xor     di, di              ; For some buggy BIOSes
+    stc
+    int     BIOS_INT_DISK
+    pop     es
+
+    ; If the carry flag became unset after the BIOS call, the read succeded.
+    jnc     .success
+
+    ; Otherwise, it failed to read parameters from the disk.
+    mov     si, msg_read_info_failed
+    jmp     die
+
+.success:
+    ; The number of sectors per track is returned in the lower 6 bits of CX.
+    and     cx, 0b0000000000111111
+    mov     [bpb + bpb_t.sectors_per_track], cx
+
+    ; Store the head count. Note that the returned value in DH is zero-indexed,
+    ; but a one-indexed count is expected in the BPB.
+    inc     dh
+    shr     dx, 8
+    mov     [bpb + bpb_t.head_count], dx
+
+    ret
 
 ; void bios_puts(const char* str /* SI */);
 ;
@@ -316,6 +358,7 @@ bios_disk_read:
     ; If we still have retries left, reset the disk, decrease the counter and
     ; loop. We can directly call 'bios_disk_reset' since the drive number is
     ; already in DL.
+    mov     dl, [bpb + ebpb_t.drive_number]
     call    bios_disk_reset
     jmp     .loop
 
@@ -360,6 +403,7 @@ bios_disk_reset:
 ; the first instruction, so the entry point needs to be first.
 msg_boot: db `Hello, world.\0`
 msg_read_success: db `Successfully read second sector.\0`
+msg_read_info_failed: db `The BIOS failed to read the drive information.\0`
 msg_read_failed: db `The BIOS failed to read sectors from drive.\0`
 msg_reset_failed: db `The BIOS failed to reset disk system.\0`
 
