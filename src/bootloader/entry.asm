@@ -157,7 +157,7 @@ bootloader_entry:
 ; Print the specified error message and halt.
 die:
     call    bios_puts
-    jmp     halt
+    ; Fallthrough to 'halt'
 
 ; void halt(void);
 ;
@@ -307,24 +307,21 @@ lba_to_chs:
 
 ; void bios_disk_read(uint16_t src,          /* AX */
 ;                     uint8_t  num_sectors,  /* CL */
-;                     uint8_t  drive_index,  /* DL */
 ;                     uint8_t* dst);         /* ES:BX */
 ;
-; Read the specified number of sectors (CL) from the specified drive (DL) at the
-; specified LBA address (AX) into the specified address in the "Extra"
-; segment (ES:BX).
+; Read the specified number of sectors (CL) from the specified LBA address (AX)
+; into the specified address in the "Extra" segment (ES:BX).
 bios_disk_read:
     push    ax
-    push    bx
     push    cx
     push    dx
     push    di
 
-    ; TODO: Assert that the "sector number" argument (CL) is [1..128]
-    push    cx          ; Preserve nSectors (CL) from call to 'lba_to_chs'
-
     ; Convert our first argument AX, in Logical Block Address scheme, to
     ; Cylinder-Head-Sector, storing the results in CH, CL and DH.
+    ;
+    ; TODO: Assert that the "sector number" argument (CL) is [1..128]
+    push    cx          ; Preserve nSectors (CL) from call to 'lba_to_chs'
     call    lba_to_chs
 
     ; Load the number of sectors (which used to be in CL, now in the top of the
@@ -332,6 +329,9 @@ bios_disk_read:
     ; high part of AX.
     pop     ax
     mov     ah, BIOS_DRIVE_READ
+
+    ; Load the drive number into DL, needed by the BIOS.
+    mov     dl, [bpb + ebpb_t.drive_number]
 
     ; If a read operation fails, we will retry it an arbitrary number of
     ; times. The DI register will be used to keep track of this counter.
@@ -356,9 +356,7 @@ bios_disk_read:
     jz      .read_error
 
     ; If we still have retries left, reset the disk, decrease the counter and
-    ; loop. We can directly call 'bios_disk_reset' since the drive number is
-    ; already in DL.
-    mov     dl, [bpb + ebpb_t.drive_number]
+    ; loop.
     call    bios_disk_reset
     jmp     .loop
 
@@ -370,16 +368,16 @@ bios_disk_read:
     pop     di
     pop     dx
     pop     cx
-    pop     bx
     pop     ax
     ret
 
-; void bios_disk_reset(uint8_t drive_index /* DL */);
+; void bios_disk_reset(void);
 ;
-; Reset the disk controller for the specified drive number (DL).
+; Reset the disk controller for the drive number stored in the EBPB.
 bios_disk_reset:
     pusha
     mov     ah, BIOS_RESET_DISK_SYSTEM
+    mov     dl, [bpb + ebpb_t.drive_number]
     stc
     int     BIOS_INT_DISK
     popa
