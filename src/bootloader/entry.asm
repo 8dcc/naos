@@ -162,7 +162,7 @@ bootloader_entry:
     ; store it in the BPB.
     call    bios_read_disk_info
 
-    mov     si, msg_searching
+    mov     si, str_searching
     call    bios_puts
 
     ; Calculate the location of the root directory:
@@ -260,7 +260,7 @@ bios_read_disk_info:
     jnc     .success
 
     ; Otherwise, it failed to read parameters from the disk.
-    mov     si, msg_read_info_failed
+    mov     si, str_read_info_failed
     jmp     die
 
 .success:
@@ -282,10 +282,9 @@ bios_read_disk_info:
 ; console.
 ;
 ; TODO: The BIOS might overwrite more registers inside the interrupt.
-bios_puts:
+bios_put:
     push    ax
     push    bx
-    push    si
 
 .loop:
     lodsb                   ; Load byte from SI into AL, and increment SI
@@ -299,21 +298,28 @@ bios_puts:
     jmp     .loop
 
 .done:
-    ; Always print carriage return and newline, instead of storing them in every
-    ; string.
-    mov     al, `\r`
-    mov     ah, BIOS_TTY_WRITE_CHAR
-    mov     bh, 0x0
-    int     BIOS_INT_VIDEO
-
-    mov     al, `\n`
-    mov     ah, BIOS_TTY_WRITE_CHAR
-    mov     bh, 0x0
-    int     BIOS_INT_VIDEO
-
-    pop     si
     pop     bx
     pop     ax
+    ret
+
+; void bios_puts(const char* str /* SI */);
+;
+; Print an identifier, the specified null-terminated string and along with a
+; newline, to the BIOS console.
+bios_puts:
+    push    si
+
+    mov     si, str_stage1
+    call    bios_put
+
+    pop     si
+    push    si
+    call    bios_put
+
+    mov     si, str_crlf
+    call    bios_put
+
+    pop     si
     ret
 
 ; uint24_t lba_to_chs(uint16_t lba_addr /* AX */);
@@ -429,7 +435,7 @@ bios_disk_read:
     jmp     .loop
 
 .read_error:
-    mov     si, msg_read_failed
+    mov     si, str_read_failed
     jmp     die
 
 .done:
@@ -454,7 +460,7 @@ bios_disk_reset:
     jnc     .done
 
     ; If the carry flag is still set after the BIOS call, it failed. Abort.
-    mov     si, msg_reset_failed
+    mov     si, str_reset_failed
     jmp     die
 
 .done:
@@ -506,7 +512,7 @@ get_stage2_cluster:
     jl      .loop
 
     ; Iterated all root directory entries.
-    mov     si, msg_file_not_found
+    mov     si, str_file_not_found
     jmp     die
 
 .done:
@@ -606,18 +612,19 @@ read_file_contents:
 ; bytes, and we need to add the padding. Also note the position of the string
 ; inside the file. After the file is placed into 0x7C00, the BIOS will jump to
 ; the first instruction, so the entry point needs to be first.
-msg_searching:   db "Loading `"
+str_searching:   db "Loading `"
 stage2_filename: db STAGE2_FILENAME
                  db `'\0`
 
-; TODO: Show that we are the stage 1 in 'bios_puts'
-;msg_stage1: db `S1:\0`
+str_stage1: db `S1: \0`
+str_crlf: db `\r\n\0`
 
-msg_read_info_failed: db `ERR:1\0` ; BIOS failed to read the drive information.
-msg_read_failed:      db `ERR:2\0` ; BIOS failed to read sectors from drive.
-msg_reset_failed:     db `ERR:3\0` ; BIOS failed to reset disk system.
+; TODO: Move error codes to macros, add bios_die, print it.
+str_read_info_failed: db `ERR:1\0` ; BIOS failed to read the drive information.
+str_read_failed:      db `ERR:2\0` ; BIOS failed to read sectors from drive.
+str_reset_failed:     db `ERR:3\0` ; BIOS failed to reset disk system.
 
-msg_file_not_found:   db `Not found\0` ; Stage 2 file not found in root directory
+str_file_not_found:   db `Not found\0` ; Stage 2 file not found in root directory
 
 ;-------------------------------------------------------------------------------
 ; Bootable signature
