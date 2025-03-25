@@ -51,6 +51,20 @@
 ; Memory address where the BIOS is supposed to load us.
 %define BOOT_LOAD_ADDR 0x7C00
 
+; Memory address for loading the FAT12 root directory (for searching files) and
+; the FAT itself (for getting the cluster numbers for the file).
+%assign SCRATCH_BUFFER_ADDR (BOOT_LOAD_ADDR + 512)
+
+; Short name of the Stage 2 binary that should be found in the root directory of
+; the FAT12 volume.
+%define STAGE2_FILENAME "STAGE2  BIN"
+%if %strlen(STAGE2_FILENAME) != 11
+%error "Expected an 11-byte filename that followed the 8.3 scheme."
+%endif
+
+; Address where the Stage 2 should be loaded.
+%define STAGE2_ADDR 0xA000
+
 ;-------------------------------------------------------------------------------
 ; Start of boot sector
 
@@ -148,26 +162,63 @@ bootloader_entry:
     ; store it in the BPB.
     call    bios_read_disk_info
 
-    mov     si, msg_boot
+    mov     si, msg_searching
     call    bios_puts
 
-    ; Read one sector (CL) from the first LBA block (AX) of the current floppy
-    ; disk (DL), and save it in memory address 0x8000.
+    ; Calculate the location of the root directory:
     ;
-    ; Note that the 'bios_disk_read' function will write to ES:BX, not just BX,
-    ; but since we initialized the "extra" segment (ES) to zero, it translates
-    ; to just BX.
-    mov     ax, 1               ; LBA block number
-    mov     cl, 1               ; Number of sectors to read
-    mov     bx, 0x8000
-    call    bios_disk_read
+    ;     root_dir_lba = (fat_count * sectors_per_fat) + first_fat_lba
+    ;
+    ; Note that the first FAT is always located after the reserved sectors.
+    xor     ah, ah
+    mov     al, [bpb + bpb_t.fat_count]
+    mul     word [bpb + bpb_t.sectors_per_fat]
+    add     ax, [bpb + bpb_t.reserved_sectors]
+    push    ax
 
-    mov     si, msg_read_success
-    call    bios_puts
+    ; Calculate the size of the root directory in bytes. We shift the number of
+    ; directory entries 5 bits to the left, effectively multiplying it by 32
+    ; (the size of a 'DirectoryEntry' structure).
+    mov     ax, [bpb + bpb_t.dir_entries_count]
+    shl     ax, 5
 
-    ; For now, halt the system
-    ; TODO: Jump to kernel
-    jmp     halt
+    ; Calculate the size of the root directory in sectors, rounding up.
+    ;
+    ;     root_dir_sectors =
+    ;         (root_dir_bytes + bytes_per_sector - 1) / bytes_per_sector;
+    ;
+    ; This operation is suggested by the FAT specification, see my blog article
+    ; mentioned above.
+    add     ax, word [bpb + bpb_t.bytes_per_sector]
+    dec     ax
+    xor     dx, dx              ; For the division
+    div     word [bpb + bpb_t.bytes_per_sector]
+
+    ; Search for the Stage 2 binary in the root directory, and return its first
+    ; cluster index.
+    mov     cx, ax              ; CL = root_dir_sectors
+    pop     ax                  ; AX = root_dir_lba
+    push    ax                  ; Push again for later. Can't do: MOV AX, [SP]
+    call    get_stage2_cluster  ; AX = first_cluster_idx
+
+    ; Calculate the start of the data region. Note that CL contains the size of
+    ; the root directory in sectors.
+    pop     dx                  ; DX = root_dir_lba
+    add     dx, cx              ; DX += root_dir_sectors  // data_region_lba
+
+    ; Read the Stage 2 binary into the 'STAGE2_ADDR'.
+    ;
+    ; Note that DX contains the first sector of the data region. Also note that,
+    ; although AX contains the first cluster index of the file we just found,
+    ; the function expects it in CX.
+    mov     cx, ax              ; CX = first_cluster_idx
+    mov     bx, STAGE2_ADDR
+    call    read_file_contents
+
+    ; TODO: Add more status messages if possible.
+
+    jmp     [es:STAGE2_ADDR]    ; Jump to Stage 2
+    jmp     halt                ; Unreachable
 
 ; void die(const char* str /* SI */);
 ;
@@ -410,17 +461,163 @@ bios_disk_reset:
     ret
 
 ;-------------------------------------------------------------------------------
+; FAT12 functions
+
+; uint16_t get_stage2_cluster(uint16_t root_dir_lba,        /* AX */
+;                             uint8_t root_dir_sectors);    /* CL */
+;
+; Search the FAT12 root directory for a file named STAGE2_FILENAME, and return
+; its first cluster index in the FAT. The value is returned in AX, and CL is
+; preserved.
+get_stage2_cluster:
+    push    cx
+
+    ; Load the entire root directory into the specified buffer address, which we
+    ; assume is safe to write to.
+    mov     bx, SCRATCH_BUFFER_ADDR
+    call    bios_disk_read
+
+    ; Clear direction flag once for CMPSB below
+    cld
+
+    ; - BX should still contain the address where the root directory was loaded.
+    ; - AX will be used to count the number of entries read, and will be
+    ;   compared against the number of entries in the root directory.
+    xor     ax, ax
+
+.loop:
+    ; Iterate the root directory, comparing each filename with the target
+    ; 'stage2_filename'.
+    mov     di, bx
+    mov     si, stage2_filename
+    mov     cx, %strlen(STAGE2_FILENAME)
+
+    ; - REPE: Repeat string instruction while operands are equal, and while CX
+    ;   is not 0.
+    ; - CMPSB: Compare DS:SI with ES:DI, incrementing (since DF=0) SI and DI.
+    repe cmpsb
+
+    ; If the ZF flag is set after the previous instructions, all bytes matched
+    je      .done
+
+    ; Continue searching in the next entry.
+    add     bx, dir_entry_t_size
+    cmp     bx, [bpb + bpb_t.dir_entries_count]
+    jl      .loop
+
+    ; Iterated all root directory entries.
+    mov     si, msg_file_not_found
+    jmp     die
+
+.done:
+    mov     ax, [di + dir_entry_t.cluster_idx_low]
+
+    pop     cx
+    ret
+
+; void read_file_contents(uint16_t first_cluster_idx, /* CX */
+;                         uint16_t data_region_lba,   /* DX */
+;                         uint8_t* dst);              /* ES:BX */
+;
+; Read the clusters that form the specified FAT12 file into the specified memory
+; address.
+;
+; NOTE: The AX, CX and DX register are overwritten, but BX is preserved.
+read_file_contents:
+    push    bx
+    push    cx
+
+    ; Read the FAT into the scratch buffer.
+    mov     ax, [bpb + bpb_t.reserved_sectors]  ; First FAT sector
+    mov     cl, [bpb + bpb_t.sectors_per_fat]   ; FAT size in sectors
+    mov     bx, SCRATCH_BUFFER_ADDR             ; Destination
+    call    bios_disk_read
+
+    pop     cx                  ; CX = first_cluster_idx
+    pop     bx                  ; BX  = dst
+    push    bx                  ; Store again for when we return
+
+.loop:
+    ; Did we reach the end of the linked list of cluster indexes?
+    cmp     cx, 0xFF8
+    jge     .done
+
+    ; Get the absolute sector number corresponding to the current cluster
+    ; index. Note that this cluster index was relative to the FAT at this
+    ; point (see my article for more information).
+    mov     ax, cx              ; AX = cur_cluster_idx
+    sub     ax, 2               ; AX -= 2       // Not relative to FAT anymore
+    mul     byte [bpb + bpb_t.sectors_per_cluster]
+    add     ax, dx              ; AX += data_region_lba
+
+    push    cx
+
+    ; Read a single cluster from AX into ES:BX.
+    mov     cl, [bpb + bpb_t.sectors_per_cluster]
+    call    bios_disk_read
+
+    ; Skip over the bytes we just read, for the next iteration.
+    xor     ch, ch
+    mov     ax, cx                              ; AX = written_sectors
+    mul     byte [bpb + bpb_t.bytes_per_sector] ; AX = written_bytes
+    add     bx, ax                              ; dst += written_bytes
+
+    pop     cx                  ; CX = cur_cluster_idx
+
+    ; Move to the next index in the linked list.
+    ;
+    ; First, transform the 12-bit FAT index into the absolute 8-bit index.
+    mov     ax, cx              ; AX = cur_cluster_idx
+    shr     ax, 1               ; AX = cur_cluster_idx / 2
+    add     cx, ax              ; CX = cur_cluster_idx + (cur_cluster_idx / 2)
+
+    ; Read the two bytes at the current FAT index.
+    ;
+    ; Note that we can only use certain registers for addressing in 16-bit mode,
+    ; so we can't store the address in AX.
+    mov     si, SCRATCH_BUFFER_ADDR     ; Address where the FAT is loaded
+    add     si, cx                      ; SI = (uint8_t*)fat + absolute_idx
+    mov     ax, [ds:si]                 ; AX = next_cluster_idx  // Extra nibble
+
+    ; Check if the absolute 8-bit index is odd or even. Depending on this, we
+    ; will keep the upper or lower 3 nibbles, respectively.
+    test    ax, 0b00000001
+    jz      .even
+
+    ; NOTE: We assume that the current machine has the same endianness as the
+    ; FAT filesystems (little-endian).
+    shr     ax, 4               ; Keep upper 3 nibbles (index was odd)
+    jmp     .continue
+
+.even:
+    and     ax, 0xFFF           ; Keep lower 3 nibbles (index was even)
+
+.continue:
+    jmp     .loop
+
+.done:
+    pop     bx                  ; BX = original_dst
+    ret
+
+;-------------------------------------------------------------------------------
 ; Data
 
 ; No '.data' section because the string also needs to be inside the first 512
 ; bytes, and we need to add the padding. Also note the position of the string
 ; inside the file. After the file is placed into 0x7C00, the BIOS will jump to
 ; the first instruction, so the entry point needs to be first.
-msg_boot: db `Hello, world.\0`
-msg_read_success: db `Successfully read second sector.\0`
-msg_read_info_failed: db `The BIOS failed to read the drive information.\0`
-msg_read_failed: db `The BIOS failed to read sectors from drive.\0`
-msg_reset_failed: db `The BIOS failed to reset disk system.\0`
+msg_searching:   db "Loading `"
+stage2_filename: db STAGE2_FILENAME
+                 db `'\0`
+
+; TODO: Show that we are the stage 1 in 'bios_puts'
+;msg_stage1: db `S1:\0`
+
+msg_read_info_failed: db `ERR:1\0` ; BIOS failed to read the drive information.
+msg_read_failed:      db `ERR:2\0` ; BIOS failed to read sectors from drive.
+msg_reset_failed:     db `ERR:3\0` ; BIOS failed to reset disk system.
+
+msg_file_not_found:   db `Not found\0` ; Stage 2 file not found in root directory
 
 ;-------------------------------------------------------------------------------
 ; Bootable signature

@@ -45,15 +45,10 @@ endstruc
 
 ; Extended BIOS Parameter Block (EBPB) used by FAT12 and FAT16 since DOS 4.0.
 struc ebpb_t
-    .bpb            resb bpb_t_size ; BIOS Parameter Block, 25 bytes
+    .bpb:           resb bpb_t_size ; BIOS Parameter Block, 25 bytes
     .drive_number:  resb 1
     .reserved:      resb 1
-
-    ; A signature of 0x28 indicates that the DOS 3.4 format should be used, with
-    ; just the volume ID following. In this case, it should be 0x29 to indicate
-    ; DOS 4.0 format, since we have the other 2 fields.
-    .signature:     resb 1
-
+    .signature:     resb 1      ; Should be 0x29
     .volume_id:     resb 4      ; Serial number
     .volume_label:  resb 11     ; Arbitrary name, padded with blanks (0x20)
     .system_id:     resb 8      ; File system type, padded with blanks (0x20)
@@ -61,6 +56,26 @@ endstruc
 
 %if ebpb_t_size != 51
 %error "Expected the size of an Extended BIOS Parameter Block to be 51 bytes."
+%endif
+
+; Directory entry. Each element in the root directory will have this layout.
+struc dir_entry_t
+    .name:                  resb 11
+    .attributes:            resb 1
+    .reserved:              resb 1
+    .creation_time_tenths:  resb 1  ; Tenths of a second
+    .creation_time:         resw 1  ; Hour, minute, second
+    .creation_date:         resw 1  ; Year, month, day
+    .access_date:           resw 1  ; Year, month, day
+    .cluster_idx_high:      resw 1  ; FAT32 only
+    .modification_time:     resw 1  ; Hour, minute, second
+    .modification_date:     resw 1  ; Year, month, day
+    .cluster_idx_low:       resw 1
+    .size:                  resd 1  ; Bytes
+endstruc
+
+%if dir_entry_t_size != 32
+%error "Expected the size of a FAT Directory Entry to be 32 bytes."
 %endif
 
 %endif ; BIOS_STRUCTURES_ASM_
