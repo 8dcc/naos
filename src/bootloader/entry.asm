@@ -628,9 +628,9 @@ str_searching:   db "Loading `"
 stage2_filename: db STAGE2_FILENAME
                  db `'\0`
 
-str_err:         db "ERR: "
+str_err:         db "ERR("
 err_placeholder: db "?"
-                 db `\0`
+                 db `)\0`
 
 str_stage1: db `S1: \0`
 str_crlf:   db `\r\n\0`
