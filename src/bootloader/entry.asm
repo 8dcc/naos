@@ -38,6 +38,7 @@
 ;------------------------------------------------------------------------------
 ; Includes
 
+%include "include/error_codes.asm"
 %include "include/bios_codes.asm"
 %include "include/fat12_structures.asm"
 
@@ -220,6 +221,17 @@ bootloader_entry:
     jmp     [es:STAGE2_ADDR]    ; Jump to Stage 2
     jmp     halt                ; Unreachable
 
+
+; ------------------------------------------------------------------------------
+
+; void die_err(char error_code /* AL */);
+;
+; Print the specified error code and die.
+die_err:
+    mov     [err_placeholder], al
+    mov     si, str_err
+    ; Fallthrough to 'die'
+
 ; void die(const char* str /* SI */);
 ;
 ; Print the specified error message and halt.
@@ -260,8 +272,8 @@ bios_read_disk_info:
     jnc     .success
 
     ; Otherwise, it failed to read parameters from the disk.
-    mov     si, str_read_info_failed
-    jmp     die
+    mov     ax, ERR_BIOS_READ_INFO
+    jmp     die_err
 
 .success:
     ; The number of sectors per track is returned in the lower 6 bits of CX.
@@ -435,8 +447,8 @@ bios_disk_read:
     jmp     .loop
 
 .read_error:
-    mov     si, str_read_failed
-    jmp     die
+    mov     si, ERR_BIOS_READ_SECTORS
+    jmp     die_err
 
 .done:
     pop     di
@@ -460,8 +472,8 @@ bios_disk_reset:
     jnc     .done
 
     ; If the carry flag is still set after the BIOS call, it failed. Abort.
-    mov     si, str_reset_failed
-    jmp     die
+    mov     si, ERR_BIOS_RESET
+    jmp     die_err
 
 .done:
     ret
@@ -616,13 +628,12 @@ str_searching:   db "Loading `"
 stage2_filename: db STAGE2_FILENAME
                  db `'\0`
 
-str_stage1: db `S1: \0`
-str_crlf: db `\r\n\0`
+str_err:         db "ERR: "
+err_placeholder: db "?"
+                 db `\0`
 
-; TODO: Move error codes to macros, add bios_die, print it.
-str_read_info_failed: db `ERR:1\0` ; BIOS failed to read the drive information.
-str_read_failed:      db `ERR:2\0` ; BIOS failed to read sectors from drive.
-str_reset_failed:     db `ERR:3\0` ; BIOS failed to reset disk system.
+str_stage1: db `S1: \0`
+str_crlf:   db `\r\n\0`
 
 str_file_not_found:   db `Not found\0` ; Stage 2 file not found in root directory
 
