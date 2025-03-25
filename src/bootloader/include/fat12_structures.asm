@@ -19,8 +19,8 @@
 ;
 ; This file provides structures used in FAT12 file systems.
 
-%ifndef BIOS_STRUCTURES_ASM_
-%define BIOS_STRUCTURES_ASM_
+%ifndef FAT12_STRUCTURES_ASM_
+%define FAT12_STRUCTURES_ASM_
 
 ; BIOS Parameter Block (BPB) for DOS 3.31. It which describes the physical
 ; layout of a data storage volume.
@@ -78,4 +78,4 @@ endstruc
 %error "Expected the size of a FAT Directory Entry to be 32 bytes."
 %endif
 
-%endif ; BIOS_STRUCTURES_ASM_
+%endif ; FAT12_STRUCTURES_ASM_
