@@ -24,7 +24,17 @@
 ;
 ; For more information on how the FAT12 file system works, see my blog article:
 ; https://8dcc.github.io/programming/understanding-fat.html
-
+;
+;------------------------------------------------------------------------------
+;
+; TODO:
+;
+;   - Improve consistency of functions, specially regarding register
+;     preservation. Too many pushes/pops is not a problem when it comes to
+;     performance, but it can be when it comes to stack space (see comment
+;     below, when setting up SS) and specially when it comes to binary size,
+;     since we only have 448 bytes for code.
+;
 ;------------------------------------------------------------------------------
 ; Includes
 
@@ -38,6 +48,9 @@
 ; unreliable.
 %define DISK_RETRY_NUM 3
 
+; Memory address where the BIOS is supposed to load us.
+%define BOOT_LOAD_ADDR 0x7C00
+
 ;-------------------------------------------------------------------------------
 ; Start of boot sector
 
@@ -46,7 +59,7 @@ bits 16
 ; Specify base address where the BIOS will load us. We need to use NASM's
 ; built-in "linker" because we are generating a raw binary, and we can't link
 ; with 'ld'.
-org 0x7C00
+org BOOT_LOAD_ADDR
 
 section .text
 
@@ -115,11 +128,15 @@ bootloader_entry:
 
     ; We will also set up the Stack Segment (SS). Since the BIOS loaded us at
     ; address 0x7C00, and the stack grows downwards, we can use the current
-    ; address as the bottom of the stack (the highest address). Also note that,
-    ; when a value is pushed, the stack pointer is decreased before the value is
-    ; written, so our first 16 bytes won't be overwritten.
+    ; address as the bottom of the stack (the highest address).
+    ;
+    ; Note that, when a value is pushed, the stack pointer is decreased before
+    ; the value is written, so our first 16 bytes won't be overwritten.
+    ;
+    ; We should be able to use the region between 0x7C00 and 0x500, but we
+    ; shouldn't rely to heavily on this.
     mov     ss, ax
-    mov     sp, 0x7C00
+    mov     sp, BOOT_LOAD_ADDR
 
     ; Clear the Code segment (CS) by performing a far jump, ensuring that we are
     ; in '0000:7c00' and not '07c0:0000'. The JMP is necessary because we can't
