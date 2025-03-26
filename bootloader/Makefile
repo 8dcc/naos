@@ -26,5 +26,5 @@ qemu: $(STAGE1_BIN)
 
 # ------------------------------------------------------------------------------
 
-$(STAGE1_BIN): src/entry.asm
+$(STAGE1_BIN): src/stage1.asm
 	$(AS) $(ASFLAGS) -i$(dir $<) -o $@ $<

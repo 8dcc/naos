@@ -17,7 +17,7 @@
 ;
 ;------------------------------------------------------------------------------
 ;
-; This file describes the entry point of the bootloader.
+; This file describes the entry point of the bootloader (called Stage 1).
 ;
 ; The BIOS will look for the '55 AA' signature in bytes 510..511, and loads us
 ; into 0x7C00.
