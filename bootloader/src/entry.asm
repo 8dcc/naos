@@ -274,7 +274,7 @@ bios_read_disk_info:
     jnc     .success
 
     ; Otherwise, it failed to read parameters from the disk.
-    mov     ax, ERR_BIOS_READ_INFO
+    mov     al, ERR_BIOS_READ_INFO
     jmp     die_err
 
 .success:
@@ -449,7 +449,7 @@ bios_disk_read:
     jmp     .loop
 
 .read_error:
-    mov     si, ERR_BIOS_READ_SECTORS
+    mov     al, ERR_BIOS_READ_SECTORS
     jmp     die_err
 
 .done:
@@ -474,7 +474,7 @@ bios_disk_reset:
     jnc     .done
 
     ; If the carry flag is still set after the BIOS call, it failed. Abort.
-    mov     si, ERR_BIOS_RESET
+    mov     al, ERR_BIOS_RESET
     jmp     die_err
 
 .done:
