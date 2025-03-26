@@ -161,6 +161,8 @@ bootloader_entry:
 
     ; Get the drive number, sectors per track and head count from the BIOS, and
     ; store it in the BPB.
+    ;
+    ; FIXME: This currently fails (error code 1) when booting from CD/DVD.
     call    bios_read_disk_info
 
     mov     si, str_searching
