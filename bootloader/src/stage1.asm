@@ -104,8 +104,8 @@ istruc ebpb_t
     at bpb_t.dir_entries_count,      dw 0xE0
     at bpb_t.total_sectors,          dw 2880    ; 1.44MiB / 512bps = 2880
     at bpb_t.media_descriptor_type,  db 0xF0    ; 3.5" floppy disk
-    at bpb_t.sectors_per_fat,        dw 9
-    at bpb_t.sectors_per_track,      dw 18
+    at bpb_t.sectors_per_fat,        dw 1
+    at bpb_t.sectors_per_track,      dw 16
     at bpb_t.head_count,             dw 2
     at bpb_t.hidden_sectors,         dd 0
 
