@@ -223,8 +223,7 @@ bootloader_entry:
     jmp     [es:STAGE2_ADDR]    ; Jump to Stage 2
     jmp     halt                ; Unreachable
 
-
-; ------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------
 
 ; void die_err(char error_code /* AL */);
 ;
@@ -290,10 +289,9 @@ bios_read_disk_info:
 
     ret
 
-; void bios_puts(const char* str /* SI */);
+; void bios_put(const char* str /* SI */);
 ;
-; Print the specified null-terminated string, along with a newline, to the BIOS
-; console.
+; Print the specified null-terminated string, to the BIOS console.
 ;
 ; TODO: The BIOS might overwrite more registers inside the interrupt.
 bios_put:
@@ -500,15 +498,18 @@ get_stage2_cluster:
     ; Clear direction flag once for CMPSB below
     cld
 
-    ; - BX should still contain the address where the root directory was loaded.
-    ; - AX will be used to count the number of entries read, and will be
-    ;   compared against the number of entries in the root directory.
-    xor     ax, ax
+    ; DI will hold the address of the current element, which is whrere the name
+    ; is located. We use DI because CMPSB uses it. Note that BX should still
+    ; contain the address where the root directory was loaded.
+    mov     di, bx
+
+    ; BX will be used to count the number of entries read, and will be compared
+    ; against the number of entries in the root directory.
+    xor     bx, bx
 
 .loop:
     ; Iterate the root directory, comparing each filename with the target
     ; 'stage2_filename'.
-    mov     di, bx
     mov     si, stage2_filename
     mov     cx, %strlen(STAGE2_FILENAME)
 
@@ -521,8 +522,9 @@ get_stage2_cluster:
     je      .done
 
     ; Continue searching in the next entry.
-    add     bx, dir_entry_t_size
-    cmp     bx, [bpb + bpb_t.dir_entries_count]
+    add     si, dir_entry_t_size
+    inc     ax
+    cmp     ax, [bpb + bpb_t.dir_entries_count]
     jl      .loop
 
     ; Iterated all root directory entries.
