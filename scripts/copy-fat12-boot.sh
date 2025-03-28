@@ -22,9 +22,7 @@ set -e
 
 DD='dd'
 
-
-DDFLAGS=()
-
+# Both input and output files should be at least this many bytes in size.
 BOOT_SECTOR_SIZE=512
 
 # ------------------------------------------------------------------------------
@@ -67,45 +65,28 @@ g_cur_offset=0
 # Copy the next N bytes of 'g_src' into 'g_dst'.
 copy_next_bytes() {
     local num_bytes="$1"
-    local tmp_file
 
-    tmp_file="$(mktemp --tmpdir "copy-fat12-boot.XXX.bin")"
-
-    # Copy preceding bytes to the 'num_bytes' offset from the destination.
-    $DD if="$g_dst"    \
-        of="$tmp_file" \
-        bs=1           \
-        count="$g_cur_offset"
-
-    # Actual byte replacement.
+    # Replace the specified number of bytes at the known global offset.
     #
-    # Note that the block size ('bs') affects both the 'count' and the 'skip'
-    # arguments.
-    #
-    # Meaning of last arguments:
-    #   - oflag=append: Append to the file (also copy previous).
-    #   - conv=notrunc: Don't truncate the file (also copy subsequent bytes).
-    $DD if="$g_src"          \
-        of="$tmp_file"       \
-        bs=1                 \
-        count="$num_bytes"   \
-        skip="$g_cur_offset" \
-        oflag=append         \
+    # Please note that:
+    #   - The block size ('bs') affects both the 'count' and the 'skip'
+    #     arguments.
+    #   - Both 'iseek' and 'oseek' are needed, since our offset corresponds to
+    #     both the input and output. Using just 'skip' (i.e. 'iseek') or 'seek'
+    #     (i.e. 'oseek') is not enough.
+    #   - The 'conv=notrunc' option is used to specify that the file output
+    #     should not be truncated. In other words, if we copy X bytes at offset
+    #     Y, it should also copy from (Y+X) to the end of the destination.
+    $DD if="$g_src"           \
+        of="$g_dst"           \
+        bs=1                  \
+        count="$num_bytes"    \
+        iseek="$g_cur_offset" \
+        oseek="$g_cur_offset" \
         conv=notrunc
 
     # Calculate new offset for future calls.
     g_cur_offset=$((g_cur_offset + num_bytes))
-
-    # Copy subsequent bytes to the from the destination, skipping after the ones
-    # we just copied.
-    $DD if="$g_dst"          \
-        of="$tmp_file"       \
-        bs=1                 \
-        skip="$g_cur_offset" \
-        oflag=append         \
-        conv=notrunc
-
-    mv "$tmp_file" "$g_dst"
 }
 
 # skip_next_bytes(num_bytes);
