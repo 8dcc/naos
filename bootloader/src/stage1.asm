@@ -565,7 +565,7 @@ read_file_contents:
     call    bios_disk_read
 
     pop     cx                  ; CX = first_cluster_idx
-    pop     bx                  ; BX  = dst
+    pop     bx                  ; BX = dst
     push    bx                  ; Store again for when we return
 
 .loop:
@@ -588,10 +588,12 @@ read_file_contents:
     call    bios_disk_read
 
     ; Skip over the bytes we just read, for the next iteration.
+    push    dx
     xor     ch, ch
     mov     ax, cx                              ; AX = written_sectors
-    mul     byte [bpb + bpb_t.bytes_per_sector] ; AX = written_bytes
+    mul     word [bpb + bpb_t.bytes_per_sector] ; DX:AX = written_bytes
     add     bx, ax                              ; dst += written_bytes
+    pop     dx
 
     pop     cx                  ; CX = cur_cluster_idx
 
