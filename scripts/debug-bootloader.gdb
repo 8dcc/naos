@@ -4,6 +4,15 @@
 #
 #   gdb --command='debug-bootloader.gdb'
 #
+# To add a breakpoint on a specific instruction/function, you need to first
+# obtain the offset of that instruction with:
+#
+#   ndisasm -b 16 -e 0x3E stage1.bin
+#
+# And that to add the base address (0x7C00). Note that 0x3E is the offset of the
+# first code byte after the EBPB, and the offsets shown in 'ndisasm' are
+# relative to that instruction, so you would actually need to add 0x7C3E.
+#
 #-------------------------------------------------------------------------------
 
 set architecture i8086

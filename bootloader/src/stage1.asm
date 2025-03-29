@@ -25,6 +25,15 @@
 ; For more information on how the FAT12 file system works, see my blog article:
 ; https://8dcc.github.io/programming/understanding-fat.html
 ;
+; To disassemble the generated binary (to check for offsets, for example), you
+; can use:
+;
+;   ndisasm -b 16 -e 0x3E stage1.bin
+;
+; Where 0x3E is the offset of the first code byte after the EBPB; note that all
+; displayed offsets are relative to this byte. The 'ndisasm' command ships with
+; NASM.
+;
 ;------------------------------------------------------------------------------
 ;
 ; TODO:
