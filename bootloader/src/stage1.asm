@@ -496,6 +496,9 @@ bios_disk_reset:
 ; Search the FAT12 root directory for a file named STAGE2_FILENAME, and return
 ; its first cluster index in the FAT. The value is returned in AX, and CL is
 ; preserved.
+;
+; NOTE: The SI and DI registers are overwritten with undefined data and AX is
+; overwritten with the result, but CL is preserved.
 get_stage2_cluster:
     push    cx
 
@@ -531,7 +534,7 @@ get_stage2_cluster:
     je      .done
 
     ; Continue searching in the next entry.
-    add     si, dir_entry_t_size
+    add     di, dir_entry_t_size
     inc     ax
     cmp     ax, [bpb + bpb_t.dir_entries_count]
     jl      .loop
