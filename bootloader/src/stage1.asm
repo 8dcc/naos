@@ -229,7 +229,15 @@ bootloader_entry:
 
     ; TODO: Add more status messages if possible.
 
-    jmp     [es:STAGE2_ADDR]    ; Jump to Stage 2
+    ; Jump to Stage 2, whose address is stored in ES:BX.
+    ;
+    ; We use PUSH + RETF to perform a far return into ES:BX, since we can't do a
+    ; far JMP unless we use an intermediate 32-bit memory location to store the
+    ; contents of BX and ES, in that order.
+    push    es
+    push    bx
+    retf                        ; JMP ES:BX
+
     jmp     halt                ; Unreachable
 
 ;-------------------------------------------------------------------------------
