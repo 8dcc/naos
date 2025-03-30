@@ -563,7 +563,12 @@ get_stage2_cluster:
 ; Read the clusters that form the specified FAT12 file into the specified memory
 ; address.
 ;
-; NOTE: The AX, CX and DX register are overwritten, but BX is preserved.
+; NOTE: The AX, CX, DX and SI registers are overwritten, but BX is preserved.
+;
+; TODO: If there isn't enough space on Stage 1, we could make this function a
+; bit less general by removing the BX argument and just using STAGE2_ADDR.
+;
+; TODO: This function limits the size of Stage 2 to 0xFFFF.
 read_file_contents:
     push    bx
     push    cx
@@ -588,18 +593,18 @@ read_file_contents:
     ; point (see my article for more information).
     mov     ax, cx              ; AX = cur_cluster_idx
     sub     ax, 2               ; AX -= 2       // Not relative to FAT anymore
-    mul     byte [bpb + bpb_t.sectors_per_cluster]
+    mul     byte [bpb + bpb_t.sectors_per_cluster] ; AX = AL * SpC
     add     ax, dx              ; AX += data_region_lba
 
-    push    cx
+    push    cx                  ; Preserve current cluster index
 
     ; Read a single cluster from AX into ES:BX.
+    xor     ch, ch
     mov     cl, [bpb + bpb_t.sectors_per_cluster]
     call    bios_disk_read
 
     ; Skip over the bytes we just read, for the next iteration.
-    push    dx
-    xor     ch, ch
+    push    dx                                  ; Overwritten by MUL with WORD
     mov     ax, cx                              ; AX = written_sectors
     mul     word [bpb + bpb_t.bytes_per_sector] ; DX:AX = written_bytes
     add     bx, ax                              ; dst += written_bytes
@@ -620,11 +625,11 @@ read_file_contents:
     ; so we can't store the address in AX.
     mov     si, SCRATCH_BUFFER_ADDR     ; Address where the FAT is loaded
     add     si, cx                      ; SI = (uint8_t*)fat + absolute_idx
-    mov     ax, [ds:si]                 ; AX = next_cluster_idx  // Extra nibble
+    mov     ax, [es:si]                 ; AX = next_cluster_idx  // Extra nibble
 
     ; Check if the absolute 8-bit index is odd or even. Depending on this, we
     ; will keep the upper or lower 3 nibbles, respectively.
-    test    ax, 0b00000001
+    test    ax, 0b0000000000000001
     jz      .even
 
     ; NOTE: We assume that the current machine has the same endianness as the
