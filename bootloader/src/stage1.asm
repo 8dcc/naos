@@ -497,8 +497,8 @@ bios_disk_reset:
 ; its first cluster index in the FAT. The value is returned in AX, and CL is
 ; preserved.
 ;
-; NOTE: The SI and DI registers are overwritten with undefined data and AX is
-; overwritten with the result, but CL is preserved.
+; NOTE: The SI, DI and BX registers are overwritten with undefined data and AX
+; is overwritten with the result, but CL is preserved.
 get_stage2_cluster:
     push    cx
 
@@ -510,31 +510,30 @@ get_stage2_cluster:
     ; Clear direction flag once for CMPSB below
     cld
 
-    ; DI will hold the address of the current element, which is whrere the name
-    ; is located. We use DI because CMPSB uses it. Note that BX should still
-    ; contain the address where the root directory was loaded.
-    mov     di, bx
-
-    ; BX will be used to count the number of entries read, and will be compared
+    ; AX will be used to count the number of entries read, and will be compared
     ; against the number of entries in the root directory.
-    xor     bx, bx
+    xor     ax, ax
 
 .loop:
-    ; Iterate the root directory, comparing each filename with the target
-    ; 'stage2_filename'.
+    ; Iterate the root directory, comparing each filename (DI) with the target
+    ; 'stage2_filename' (SI).
+    mov     di, bx
     mov     si, stage2_filename
     mov     cx, %strlen(STAGE2_FILENAME)
 
-    ; - REPE: Repeat string instruction while operands are equal, and while CX
-    ;   is not 0.
-    ; - CMPSB: Compare DS:SI with ES:DI, incrementing (since DF=0) SI and DI.
+    ; Compare the strings with:
+    ;   - REPE: Repeat string instruction while operands are equal, and while CX
+    ;     is not 0.
+    ;   - CMPSB: Compare DS:SI with ES:DI, incrementing (since DF=0) SI and DI.
+    ; Note that CMPSB increments DI, so BX is used to store/increment the
+    ; initial position.
     repe cmpsb
 
     ; If the ZF flag is set after the previous instructions, all bytes matched
     je      .done
 
     ; Continue searching in the next entry.
-    add     di, dir_entry_t_size
+    add     bx, dir_entry_t_size
     inc     ax
     cmp     ax, [bpb + bpb_t.dir_entries_count]
     jl      .loop
@@ -544,7 +543,7 @@ get_stage2_cluster:
     jmp     die
 
 .done:
-    mov     ax, [di + dir_entry_t.cluster_idx_low]
+    mov     ax, [bx + dir_entry_t.cluster_idx_low]
 
     pop     cx
     ret
