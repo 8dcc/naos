@@ -15,78 +15,37 @@
 ; You should have received a copy of the GNU General Public License along with
 ; this program.  If not, see <https://www.gnu.org/licenses/>.
 
+;------------------------------------------------------------------------------
+; Includes
+
+%include "include/boot_config.asm"
+%include "include/error_codes.asm"
 %include "include/bios_codes.asm"
+%include "include/fat12_structures.asm"
+
+bpb: equ BPB_ADDR
+
+;-------------------------------------------------------------------------------
+; Stage 2 entry point
 
 bits 16
 
-; TODO: Don't hard-code, include file.
-org 0xA000
-
-;-------------------------------------------------------------------------------
+org STAGE2_ADDR
 
 stage2_entry:
-    mov     si, str_hello_world
-    call    bios_puts
-    jmp     halt
-
-; void halt(void);
-;
-; Disable interrupts and stop execution.
-halt:
-    cli
-    hlt
+    mov     si, str_loaded
+    call    bios_println
     jmp     halt
 
 ;-------------------------------------------------------------------------------
+; Functions from Stage 1
 
-; void bios_put(const char* str /* SI */);
-;
-; Print the specified null-terminated string, to the BIOS console.
-;
-; TODO: We should avoid duplicating code in Stage 1 and Stage 2.
-bios_put:
-    push    ax
-    push    bx
-
-.loop:
-    lodsb                   ; Load byte from SI into AL, and increment SI
-    test    al, al          ; Did we reach the end of the string?
-    jz      .done
-
-    mov     ah, BIOS_TTY_WRITE_CHAR
-    mov     bh, 0x0                 ; Page number: 0
-    int     BIOS_INT_VIDEO
-
-    jmp     .loop
-
-.done:
-    pop     bx
-    pop     ax
-    ret
-
-; void bios_puts(const char* str /* SI */);
-;
-; Print an identifier, the specified null-terminated string and along with a
-; newline, to the BIOS console.
-bios_puts:
-    push    si
-
-    mov     si, str_stage2
-    call    bios_put
-
-    pop     si
-    push    si
-    call    bios_put
-
-    mov     si, str_crlf
-    call    bios_put
-
-    pop     si
-    ret
+; Included from external file to avoid duplicating code in Stage 1 and Stage 2.
+%include "bios_disk.asm"
+%include "bios_print.asm"
 
 ;-------------------------------------------------------------------------------
+; Data
 
-str_stage2: db `S2: \0`
-str_crlf:   db `\r\n\0`
-
-str_hello_world: db `Hello, world!\0`
+str_loaded:
+    db `Initialized Stage 2 at address `, %num(STAGE2_ADDR, -1, -16), `\0`
