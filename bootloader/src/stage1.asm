@@ -47,31 +47,10 @@
 ;------------------------------------------------------------------------------
 ; Includes
 
+%include "include/boot_config.asm"
 %include "include/error_codes.asm"
 %include "include/bios_codes.asm"
 %include "include/fat12_structures.asm"
-
-;------------------------------------------------------------------------------
-; Macros
-
-; Memory address where the BIOS is supposed to load us.
-%define BOOT_LOAD_ADDR 0x7C00
-
-; Scratch buffer used by Stage 1 for storing arbitrary information.
-;
-; It is used, for example, for loading the FAT12 root directory (for searching
-; files) and the FAT itself (for getting the cluster numbers for the file).
-%assign SCRATCH_BUFFER_ADDR (BOOT_LOAD_ADDR + 512)
-
-; Short name of the Stage 2 binary that should be found in the root directory of
-; the FAT12 volume.
-%define STAGE2_FILENAME "STAGE2  BIN"
-%if %strlen(STAGE2_FILENAME) != 11
-%error "Expected an 11-byte filename that followed the 8.3 scheme."
-%endif
-
-; Address where the Stage 2 should be loaded.
-%define STAGE2_ADDR 0xA000
 
 ;-------------------------------------------------------------------------------
 ; Start of boot sector
@@ -81,7 +60,7 @@ bits 16
 ; Specify base address where the BIOS will load us. We need to use NASM's
 ; built-in "linker" because we are generating a raw binary, and we can't link
 ; with 'ld'.
-org BOOT_LOAD_ADDR
+org STAGE1_ADDR
 
 section .text
 
@@ -158,7 +137,7 @@ bootloader_entry:
     ; We should be able to use the region between 0x7C00 and 0x500, but we
     ; shouldn't rely to heavily on this.
     mov     ss, ax
-    mov     sp, BOOT_LOAD_ADDR
+    mov     sp, STAGE1_ADDR
 
     ; Clear the Code segment (CS) by performing a far jump, ensuring that we are
     ; in '0000:7c00' and not '07c0:0000'. The JMP is necessary because we can't
