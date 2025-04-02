@@ -30,6 +30,13 @@
 ; (once for each stage), but that isn't a big deal.
 ;
 ;-------------------------------------------------------------------------------
+; Includes
+
+%include "include/error_codes.asm"
+%include "include/bios_codes.asm"
+%include "include/fat12_structures.asm"
+
+;-------------------------------------------------------------------------------
 ; Macros
 
 ; Number of retries for the BIOS disk operations, since floppy disks can be

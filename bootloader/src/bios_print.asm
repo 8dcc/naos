@@ -30,6 +30,11 @@
 ; (once for each stage), but that isn't a big deal.
 ;
 ;-------------------------------------------------------------------------------
+; Includes
+
+%include "include/bios_codes.asm"
+
+;-------------------------------------------------------------------------------
 ; Functions
 
 ; void bios_print(const char* str /* SI */);
