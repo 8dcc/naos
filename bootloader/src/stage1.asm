@@ -75,10 +75,6 @@ _start:
 ; Block (BPB) starts at offset 0xB.
 db "fsosboot"
 
-%if ($-$$) != 0xB
-%error "Expected the BIOS Parameter Block at offset 0xB."
-%endif
-
 ; Extended BIOS Parameter Block (EBPB) fields (section offset 0x0B..0x3D,
 ; inclusive).
 bpb:
@@ -116,6 +112,10 @@ istruc ebpb_t
     ; it's still used sometimes for identification purposes.
     at ebpb_t.system_id,             db "FAT12   "
 iend
+
+%if (bpb-$$) != BPB_OFFSET
+%error "Expected the BIOS Parameter Block at a specific image offset."
+%endif
 
 ;-------------------------------------------------------------------------------
 ; Entry point

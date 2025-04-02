@@ -21,6 +21,12 @@
 ; Memory address where the BIOS is supposed to load the Stage 1 binary.
 %assign STAGE1_ADDR 0x7C00
 
+; Offset in the image where the BIOS Parameter Block should be placed.
+%assign BPB_OFFSET 0xB
+
+; Absolute physical address of the BPB after the image is loaded by the BIOS.
+%assign BPB_ADDR (STAGE1_ADDR + BPB_OFFSET)
+
 ; Scratch buffer used by Stage 1 for storing arbitrary information.
 ;
 ; It is used, for example, for loading the FAT12 root directory (for searching
