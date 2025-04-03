@@ -28,7 +28,7 @@ BOOT_IMG=boot.img
 
 # ------------------------------------------------------------------------------
 
-.PHONY: all clean qemu qemu-debug
+.PHONY: all clean qemu qemu-debug elf-bins
 
 all: $(BOOT_IMG)
 
@@ -43,6 +43,11 @@ qemu: $(BOOT_IMG)
 
 qemu-debug:
 	$(MAKE) QEMUFLAGS="$(QEMUFLAGS) -s -S" qemu
+
+# Generate ELF binaries that can't be run by the BIOS, but that can be used for
+# loading debug information into GDB.
+elf-bins:
+	$(MAKE) LDFLAGS="$(LDFLAGS) --oformat=elf32-i386" all
 
 # ------------------------------------------------------------------------------
 
