@@ -1,5 +1,5 @@
 
-INCLUDE "boot_config.ld"
+INCLUDE "./boot_config.ld"
 
 /*
  * Just like in Stage 1, the Stage 2 is a flat binary, but this one is less
@@ -8,7 +8,7 @@ INCLUDE "boot_config.ld"
  * Note that this can be overwritten with the '--oformat=FOO' linker option,
  * which is useful for building an ELF version for debugging.
  */
-OUTPUT_FORMAT("binary" );
+OUTPUT_FORMAT("binary");
 
 /*
  * Entry point of Stage 2, declared in 'stage2.asm'.

@@ -1,5 +1,5 @@
 
-INCLUDE "boot_config.ld"
+INCLUDE "./boot_config.ld"
 
 /*
  * The Stage 1 is a flat binary, not a fancy ELF or 'a.out' file.

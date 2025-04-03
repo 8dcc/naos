@@ -68,10 +68,10 @@ $(BOOT_IMG): $(STAGE1_BIN) $(STAGE2_BIN)
 
 # The Stage 1 and Stage 2 flat binaries are linked from the ELF object files.
 $(STAGE1_BIN): $(STAGE1_OBJ)
-	$(LD) $(LDFLAGS) -T stage1.ld -o $@ $^
+	$(LD) $(LDFLAGS) -L linker -T linker/stage1.ld -o $@ $^
 
 $(STAGE2_BIN): $(STAGE2_OBJ)
-	$(LD) $(LDFLAGS) -T stage2.ld -o $@ $^
+	$(LD) $(LDFLAGS) -L linker -T linker/stage2.ld -o $@ $^
 
 # The sources are assembled into ELF object files, that will be later linked
 # into flat binaries, as specified in the linker scripts.
