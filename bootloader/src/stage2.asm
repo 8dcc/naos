@@ -29,9 +29,9 @@ bpb: equ BPB_ADDR
 ; Stage 2 entry point
 
 bits 16
+section .text
 
-org STAGE2_ADDR
-
+global stage2_entry
 stage2_entry:
     mov     si, str_loaded
     call    bios_println
@@ -45,7 +45,9 @@ stage2_entry:
 %include "bios_print.asm"
 
 ;-------------------------------------------------------------------------------
-; Data
+; Read-only data
+
+section .rodata
 
 str_loaded:
     db `Initialized Stage 2 at address `, %num(STAGE2_ADDR, -1, -16), `\0`

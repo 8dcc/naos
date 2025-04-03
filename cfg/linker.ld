@@ -1,4 +1,8 @@
 
+/*
+ * TODO: Move to the directory where the kernel Makefile is.
+ */
+
 /* Entry point for boot.asm */
 ENTRY(_start)
 
