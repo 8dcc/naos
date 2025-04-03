@@ -41,3 +41,6 @@ SECTIONS {
         *(.rodata*)
     }
 }
+
+/* Defined in 'stage1.asm' */
+bpb = BPB_ADDR;

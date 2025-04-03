@@ -23,7 +23,7 @@
 %include "include/bios_codes.asm"
 %include "include/fat12_structures.asm"
 
-bpb: equ BPB_ADDR
+extern bpb
 
 ;-------------------------------------------------------------------------------
 ; Stage 2 entry point
