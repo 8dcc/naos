@@ -57,18 +57,13 @@
 
 bits 16
 
-; Specify base address where the BIOS will load us. We need to use NASM's
-; built-in "linker" because we are generating a raw binary, and we can't link
-; with 'ld'.
-org STAGE1_ADDR
-
 section .text
 
 ; Entry point of the bootloader. The Boot Record must start with a short jump to
 ; the real entry point followed by a NOP.
-global _start
-_start:
-    jmp     short bootloader_entry
+global stage1_entry
+stage1_entry:
+    jmp     short stage1_main
     nop
 
 ; At offset 3, we need to add 8 arbitrary bytes so the BIOS Parameter
@@ -77,6 +72,7 @@ db "fsosboot"
 
 ; Extended BIOS Parameter Block (EBPB) fields (section offset 0x0B..0x3D,
 ; inclusive).
+global bpb
 bpb:
 istruc ebpb_t
     at bpb_t.bytes_per_sector,       dw 512
@@ -120,7 +116,7 @@ iend
 ;-------------------------------------------------------------------------------
 ; Entry point
 
-bootloader_entry:
+stage1_main:
     ; Start by setting up the Data Segment (DS) and Extra Segment (ES). We need
     ; to use an intermediate register to write to them.
     xor     ax, ax
@@ -417,10 +413,8 @@ read_file_contents:
 ;-------------------------------------------------------------------------------
 ; Data
 
-; No '.data' section because the string also needs to be inside the first 512
-; bytes, and we need to add the padding. Also note the position of the string
-; inside the file. After the file is placed into 0x7C00, the BIOS will jump to
-; the first instruction, so the entry point needs to be first.
+; We don't add a '.data' section because we want to control where the boot
+; signature will be below.
 str_searching:   db "Loading `"
 stage2_filename: db STAGE2_FILENAME
                  db `'\0`
@@ -428,7 +422,7 @@ stage2_filename: db STAGE2_FILENAME
 str_file_not_found:   db `Not found\0` ; Stage 2 file not found in root directory
 
 ;-------------------------------------------------------------------------------
-; Bootable signature
+; Boot sector signature
 
 ; Make sure we have enough space for the BIOS signature. See comment bellow.
 %if ($-$$) > 510
@@ -443,4 +437,5 @@ times 510 - ($ - $$) db 0x00
 
 ; The BIOS will look for the '55 AA' signature in bytes 510..511. Note the
 ; endianness.
-db 0x55, 0xAA
+global boot_signature
+boot_signature: db 0x55, 0xAA

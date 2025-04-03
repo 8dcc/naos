@@ -19,6 +19,7 @@ QEMUFLAGS=-rtc base=localtime            \
 
 STAGE1_BIN=stage1.bin
 STAGE1_SRC=src/stage1.asm
+STAGE1_OBJ=$(patsubst src/%,obj/%.o,$(STAGE1_SRC))
 
 STAGE2_BIN=stage2.bin
 STAGE2_SRC=src/stage2.asm
@@ -33,7 +34,7 @@ BOOT_IMG=boot.img
 all: $(BOOT_IMG)
 
 clean:
-	rm -f $(STAGE1_BIN)
+	rm -f $(STAGE1_BIN) $(STAGE1_OBJ)
 	rm -f $(STAGE2_BIN) $(STAGE2_OBJ)
 	rm -f $(BOOT_IMG)
 
@@ -65,18 +66,15 @@ $(BOOT_IMG): $(STAGE1_BIN) $(STAGE2_BIN)
 	mcopy -i $@ $^ "::/"
 	../scripts/copy-fat12-boot.sh $(STAGE1_BIN) $(BOOT_IMG)
 
-# The Stage 1 binary is assembled directly with 'bin' format.
-#
-# TODO: Perhaps also link it with LD.
-$(STAGE1_BIN): $(STAGE1_SRC)
-	$(AS) $(ASFLAGS) -f bin -i $(dir $<) -o $@ $<
+# The Stage 1 and Stage 2 flat binaries are linked from the ELF object files.
+$(STAGE1_BIN): $(STAGE1_OBJ)
+	$(LD) $(LDFLAGS) -T stage1.ld -o $@ $^
 
-# The Stage 2 flat binary is linked from the ELF object files.
 $(STAGE2_BIN): $(STAGE2_OBJ)
 	$(LD) $(LDFLAGS) -T stage2.ld -o $@ $^
 
-# The Stage 2 sources are assembled into ELF object files, that will be later
-# linked into a flat binary using the 'stage2.ld' script.
+# The sources are assembled into ELF object files, that will be later linked
+# into flat binaries, as specified in the linker scripts.
 obj/%.asm.o: src/%.asm
 	@mkdir -p $(dir $@)
 	$(AS) $(ASFLAGS) -f elf32 -i $(dir $<) -o $@ $<

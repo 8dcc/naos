@@ -1,6 +1,9 @@
 
+INCLUDE "boot_config.ld"
+
 /*
- * The Stage 2 is a flat binary, not a fancy ELF or 'a.out' file.
+ * Just like in Stage 1, the Stage 2 is a flat binary, but this one is less
+ * restrictive.
  *
  * Note that this can be overwritten with the '--oformat=FOO' linker option,
  * which is useful for building an ELF version for debugging.
@@ -23,7 +26,7 @@ SECTIONS {
      * TODO: Perhaps move to a 'config.ld' script that also gets used when
      * linking the Stage 1 binary.
      */
-    . = 0xA000;
+    . = STAGE2_ADDR;
 
     /* Text (i.e. code) */
     .text : {
