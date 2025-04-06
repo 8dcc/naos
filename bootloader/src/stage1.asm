@@ -15,7 +15,7 @@
 ; You should have received a copy of the GNU General Public License along with
 ; this program.  If not, see <https://www.gnu.org/licenses/>.
 ;
-;------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------
 ;
 ; This file describes the entry point of the bootloader (called Stage 1).
 ;
@@ -34,7 +34,7 @@
 ; displayed offsets are relative to this byte. The 'ndisasm' command ships with
 ; NASM.
 ;
-;------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------
 ;
 ; TODO:
 ;
@@ -44,7 +44,7 @@
 ;     below, when setting up SS) and specially when it comes to binary size,
 ;     since we only have 448 bytes for code.
 ;
-;------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------
 ; Includes
 
 %include "include/boot_config.asm"
@@ -68,7 +68,7 @@ stage1_entry:
 
 ; At offset 3, we need to add 8 arbitrary bytes so the BIOS Parameter
 ; Block (BPB) starts at offset 0xB.
-db "fsosboot"
+db "naosboot"
 
 ; Extended BIOS Parameter Block (EBPB) fields (section offset 0x0B..0x3D,
 ; inclusive).
@@ -100,8 +100,8 @@ istruc ebpb_t
 
     ; The contents of the following two shouldn't matter, but they have to be 4
     ; and 11 bytes respectively.
-    at ebpb_t.volume_id,             db "FSOS"
-    at ebpb_t.volume_label,          db "Bootloader "
+    at ebpb_t.volume_id,             db "NAOS"
+    at ebpb_t.volume_label,          db " BOOTLOADER"
 
     ; 8-byte file system type, padded with blanks. For example "FAT12   ",
     ; "FAT16   " or "FAT     ". In theory only used for display purposes, but
@@ -419,7 +419,7 @@ str_searching:   db "Loading `"
 stage2_filename: db STAGE2_FILENAME
                  db `'\0`
 
-str_file_not_found:   db `Not found\0` ; Stage 2 file not found in root directory
+str_file_not_found: db `Not found\0` ; Stage 2 file not found in root directory
 
 ;-------------------------------------------------------------------------------
 ; Boot sector signature

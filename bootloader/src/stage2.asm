@@ -156,5 +156,5 @@ section .rodata
 str_loaded:
     db `Initialized Stage 2 at address `, %num(STAGE2_ADDR, -1, -16), `\0`
 
-str_a20_error:   db `Could not enable A20 line. Aborting...\0`
+str_a20_error:   db `Fatal: Could not enable A20 line.\0`
 str_a20_enabled: db `Successfuly enabled A20 line\0`
