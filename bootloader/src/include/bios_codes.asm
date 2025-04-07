@@ -25,6 +25,7 @@
 ; BIOS interrupts
 %define BIOS_INT_VIDEO 0x10
 %define BIOS_INT_DISK  0x13
+%define BIOS_INT_MISC  0x15
 
 ; Video Services. These values should be in AH to indicate the function
 ; when using the interrupt 0x10.
@@ -91,5 +92,10 @@
 %define BIOS_DRIVE_READ_PARAMS1         0x48 ; Read Extended Drive Parameters
 %define BIOS_DETECT_MEDIA_CHANGE1       0x49 ; Detect Media Change
 %define BIOS_DRIVE_GET_EMULATION_TYPE   0x4B ; Get Drive Emulation Type
+
+; Miscellaneous system services
+%define BIOS_A20_ENABLE  0x2401 ; TODO: Source?
+%define BIOS_A20_STATUS  0x2402 ; TODO: Source?
+%define BIOS_A20_SUPPORT 0x2403 ; TODO: Source?
 
 %endif ; BIOS_CODES_ASM_

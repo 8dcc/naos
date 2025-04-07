@@ -77,6 +77,11 @@ enable_a20:
     test    ax, ax
     jnz     .success
 
+    call    enable_a20_bios
+    call    is_a20_enabled
+    test    ax, ax
+    jnz     .success
+
     ; TODO
 
     ; If all of the above methods failed, signal the caller that we couldn't
@@ -147,6 +152,41 @@ is_a20_enabled:
     pop     ds
     popf
     ret
+
+; bool enable_a20_bios(void);
+;
+; Try to enable the A20 line with the BIOS interrupt 0x15.
+enable_a20_bios:
+    mov     ax, BIOS_A20_SUPPORT
+    int     BIOS_INT_MISC
+    jb      .error              ; Not supported
+    test    ah, ah
+    jnz     .error              ; Not supported
+
+    mov     ax, BIOS_A20_STATUS
+    int     BIOS_INT_MISC
+    jb      .error              ; Couldn't get status
+    test    ah, ah
+    jnz     .error              ; Couldn't get status
+
+    cmp     al, 1
+    je      .done               ; Success, already enabled
+
+    mov     ax, BIOS_A20_ENABLE
+    int     BIOS_INT_MISC
+    jb      .error              ; Couldn't enable A20 line
+    test    ah, ah
+    jnz     .error              ; Couldn't enable A20 line
+
+    mov     ax, 1
+    jmp     .done               ; Success, enabled by BIOS
+
+.error:
+    mov     ax, 0
+
+.done:
+    ret
+
 
 ;-------------------------------------------------------------------------------
 ; Read-only data
