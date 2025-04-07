@@ -75,7 +75,7 @@ enable_a20:
     ; First, check if the A20 line is already enabled by the BIOS.
     call    is_a20_enabled
     test    ax, ax
-    jz      .a20_enabled
+    jnz     .success
 
     ; TODO
 
@@ -84,7 +84,7 @@ enable_a20:
     mov     ax, 0
     jmp     .done
 
-.a20_enabled:
+.success:
     mov     ax, 1
 
 .done:
