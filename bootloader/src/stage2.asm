@@ -39,7 +39,7 @@ stage2_entry:
     ; Try to enable the A20 line.
     call    enable_a20
     test    ax, ax
-    jz      .a20_enabled
+    jnz     .a20_enabled
 
     ; The 'enable_a20' function returned false.
     mov     si, str_a20_error
