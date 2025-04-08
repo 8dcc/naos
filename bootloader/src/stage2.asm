@@ -82,7 +82,12 @@ enable_a20:
     test    ax, ax
     jnz     .success
 
-    ; TODO
+    call    enable_a20_keyboard
+    call    is_a20_enabled
+    test    ax, ax
+    jnz     .success
+
+    ; TODO: Try "Fast A20" method last
 
     ; If all of the above methods failed, signal the caller that we couldn't
     ; enable it.
@@ -187,6 +192,55 @@ enable_a20_bios:
 .done:
     ret
 
+; bool enable_a20_keyboard(void);
+;
+; Try to enable the A20 line through the keyboard.
+;
+; TODO: Move these magic values to macros, explain this function better.
+enable_a20_keyboard:
+    cli
+
+    call    .wait2
+    mov     al, 0xAD
+    out     0x64, al
+
+    call    .wait2
+    mov     al, 0xD0
+    out     0x64, al
+
+    call    .wait1
+    mov     al, 0x60
+    push    eax
+
+    call    .wait2
+    mov     al, 0xD1
+    out     0x64, al
+
+    call    .wait2
+    pop     eax
+    or      al, 2
+    out     0x60, al
+
+    call    .wait2
+    mov     al, 0xAE
+    out     0x64, al
+
+    call    .wait2
+
+    sti
+    ret
+
+.wait1:                         ; Another procedure
+    in      al, 0x64
+    test    al, 1
+    jnz     .wait1
+    ret
+
+.wait2:                         ; Another procedure
+    in      al, 0x64
+    test    al, 2
+    jnz     .wait1
+    ret
 
 ;-------------------------------------------------------------------------------
 ; Read-only data
@@ -197,4 +251,4 @@ str_loaded:
     db `Initialized Stage 2 at address `, %num(STAGE2_ADDR, -1, -16), `\0`
 
 str_a20_error:   db `Fatal: Could not enable A20 line.\0`
-str_a20_enabled: db `Successfuly enabled A20 line\0`
+str_a20_enabled: db `Successfuly enabled A20 line.\0`
